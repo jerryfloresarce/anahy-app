@@ -137,6 +137,15 @@
   .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; }
 
   .fila{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px dashed var(--borde); font-family:'Segoe UI',sans-serif; font-size:0.89rem; gap:10px; }
+
+  .swipe-wrap{ position:relative; overflow:hidden; }
+  .swipe-delete-bg{
+    position:absolute; inset:0; background:var(--rojo); color:#fff;
+    display:flex; align-items:center; justify-content:flex-end; padding-right:22px;
+    font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.85rem; cursor:pointer;
+  }
+  .swipe-content{ position:relative; background:var(--superficie); touch-action:pan-y; }
+  .swipe-content .fila{ background:var(--superficie); }
   .fila:last-child{ border-bottom:none; }
   .fila .nombre{ flex:1; }
   .fila .nombre small{ display:block; color:var(--tinta-suave); font-size:0.72rem; }
@@ -240,6 +249,7 @@
       <div class="sub"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Sincronizado</span></div>
     </div>
     <div style="display:flex; gap:8px;">
+      <button class="theme-toggle" onclick="abrirArqueo()">🧮</button>
       <button class="theme-toggle" onclick="abrirChecklist()">✅</button>
       <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙</button>
       <button class="theme-toggle" onclick="abrirAjustes()">⚙️</button>
@@ -298,6 +308,7 @@
 
   <!-- GASTOS -->
   <section class="tab-panel" id="tab-gastos">
+    <button class="btn" style="margin-bottom:14px;" onclick="abrirFormGasto()">+ Añadir gasto</button>
     <div class="card">
       <h2 onclick="toggleSeccion('sec-fijos')" style="cursor:pointer; user-select:none;">Gastos fijos <span class="badge">independiente cada mes</span> <span class="chev" id="chev-sec-fijos" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
       <div id="sec-fijos" class="collapsible-content">
@@ -574,7 +585,7 @@
     <label>Monto que debe ahora (€)</label>
     <input type="number" step="0.01" id="amfMonto" placeholder="0.00">
     <div class="form-btns">
-      <button class="btn secundario" onclick="cerrarOverlay('overlayAjusteMontoFiado')">Cancelar</button>
+      <button class="btn secundario" onclick="cerrarOverlay('overlayAjusteMontoFiado'); abrirDetalleFiado(fiadoActivoId);">Cancelar</button>
       <button class="btn" onclick="guardarAjusteMontoFiado()">Guardar</button>
     </div>
   </div>
@@ -610,7 +621,7 @@
     <label>Fecha</label><input type="date" id="adFecha">
     <label>Nota (opcional)</label><input type="text" id="adNota" placeholder="Ej. compra de la semana">
     <div class="form-btns">
-      <button class="btn secundario" onclick="cerrarOverlay('overlayAumentoDeuda')">Cancelar</button>
+      <button class="btn secundario" onclick="cerrarOverlay('overlayAumentoDeuda'); abrirDetalleFiado(fiadoActivoId);">Cancelar</button>
       <button class="btn" onclick="guardarAumentoDeuda()">Guardar</button>
     </div>
   </div>
@@ -666,6 +677,31 @@
     <img id="imgZoomFoto" style="max-width:100%; touch-action:pinch-zoom;">
   </div>
   <button class="icon-btn" style="position:fixed; top:16px; right:16px; font-size:1.6rem; background:rgba(255,255,255,0.9); border-radius:50%; width:40px; height:40px;" onclick="cerrarOverlay('overlayFotoZoom')">✕</button>
+</div>
+
+<div class="form-overlay" id="overlayArqueo">
+  <div class="form-sheet">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="margin:0;">🧮 Cierre de caja</h3>
+      <button class="icon-btn" style="font-size:1.4rem;" onclick="cerrarOverlay('overlayArqueo')">✕</button>
+    </div>
+    <p style="font-size:0.75rem; color:var(--tinta-suave); margin-top:4px;">Tu cuaderno personal — no afecta a ningún otro cálculo de la app.</p>
+    <input type="date" id="arqFecha" onchange="cargarArqueo()" style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; background:var(--crema); color:var(--tinta); margin:10px 0;">
+
+    <h3 style="font-size:0.9rem;">Arqueo X (lo que dice la máquina)</h3>
+    <label>Efectivo (€)</label><input type="number" step="0.01" id="arqEfectivoX" placeholder="0.00" oninput="calcularArqueo()">
+    <label>Tarjeta (€)</label><input type="number" step="0.01" id="arqTarjetaX" placeholder="0.00" oninput="calcularArqueo()">
+    <label>Bizum (€)</label><input type="number" step="0.01" id="arqBizumX" placeholder="0.00" oninput="calcularArqueo()">
+
+    <h3 style="font-size:0.9rem; margin-top:16px;">Conteo de monedas y billetes</h3>
+    <div id="arqMonedas"></div>
+
+    <div class="total-linea"><span>Total contado en efectivo</span><span id="arqTotalContado">0€</span></div>
+    <div class="fila"><div class="nombre">Descuadre (contado − efectivo X)</div><div class="monto" id="arqDescuadre">0€</div></div>
+
+    <button class="btn" style="margin-top:14px;" onclick="guardarArqueo()">Guardar</button>
+    <button class="btn secundario" style="margin-top:8px;" onclick="cerrarOverlay('overlayArqueo')">Cerrar</button>
+  </div>
 </div>
 
 <div class="form-overlay" id="overlayChecklist">
@@ -870,6 +906,7 @@ function defaultState(){
     familiasCaducidad: ['Lácteos','Productos en bolsa','Bollería','Enlatados','Bebidas'],
     registrosFijosMensuales: {},
     fotosResumenDia: {},
+    arqueoCaja: {},
     ahorroAlquiler: { objetivo: 918, ahorrado: 425, aportaciones: [] },
     checklistItems: ['Apagar radio','Apagar ventilador','Guardar frutas y verduras','Hacer conteo de dinero','Encender cámara (refrigerador)','Apagar nevera','Apagar luz de nevera inicio y taparlo','Pasar foto del tiquet final a Ana','Apagar luz de dentro y fuera','Avisar a Ana de alarma'],
     proveedores: ['América','Elías','Dulce sol','Trigo verde','Komkal','Punto cash','Cosmo caix','Pedregosa','Ous aleña','Pacific group','Monbaque','Pepsico','Burriak','Carlos bolsa','Agua Ribes','Asían','Blaysa','Chino','Chocolate Sole','Copral','Daniel alimentación','Dispromon','Distribuidora latinoandina','DK distribución','Oscar honduras','Euro cash','Fageda','Grefusa','Froneri nestle Helados','Grupo América Fox','Grupo mundial','Helado latino','Hielo','Impex latino','Importadora mayzo','Mercabarna','Pan Bimbo','Transporte'],
@@ -886,6 +923,36 @@ function formatearFecha(iso){
 function cid(){ return 'id' + Math.random().toString(36).slice(2,10); }
 function euros(n){ return (Math.round((n||0)*100)/100).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + '€'; }
 function plural(n, singular, pluralForm){ return Math.abs(n)===1 ? singular : pluralForm; }
+
+function swipeRow(innerHtml, deleteAction){
+  return `<div class="swipe-wrap"><div class="swipe-delete-bg" onclick="${deleteAction}">🗑️ Eliminar</div><div class="swipe-content">${innerHtml}</div></div>`;
+}
+function activarDeslizables(){
+  document.querySelectorAll('.swipe-content').forEach(el=>{
+    if(el.dataset.swipeInit) return;
+    el.dataset.swipeInit = '1';
+    let startX=0, startY=0, currentX=0, dragging=false, horizontal=null;
+    el.addEventListener('touchstart', e=>{
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+      currentX = 0; dragging=true; horizontal=null;
+      el.style.transition='none';
+    }, {passive:true});
+    el.addEventListener('touchmove', e=>{
+      if(!dragging) return;
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      if(horizontal===null) horizontal = Math.abs(dx) > Math.abs(dy) + 4;
+      if(!horizontal) return;
+      currentX = Math.min(0, Math.max(dx, -96));
+      el.style.transform = `translateX(${currentX}px)`;
+    }, {passive:true});
+    el.addEventListener('touchend', ()=>{
+      dragging=false;
+      el.style.transition='transform 0.2s ease';
+      el.style.transform = currentX < -48 ? 'translateX(-90px)' : 'translateX(0)';
+    });
+  });
+}
 
 // ---------- arranque y login por identidad ----------
 let identidadElegida = null;
@@ -1050,6 +1117,21 @@ function iniciarApp(){
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
+
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible' && db){
+      docRef.get({ source: 'server' }).then((snap)=>{
+        if(snap.exists){
+          const def = defaultState();
+          const data = snap.data();
+          state = data.json ? JSON.parse(data.json) : def;
+          for(const k in def){ if(!(k in state)) state[k] = def[k]; }
+          setSync(true);
+          render();
+        }
+      }).catch((e)=>{ console.error('No se pudo refrescar al volver', e); });
+    }
+  });
 }
 
 function setSync(ok){
@@ -1152,6 +1234,7 @@ function render(){
   if(activeTab==='fiados') renderFiados();
   if(activeTab==='prestamo') renderPrestamo();
   if(activeTab==='stock') renderStock();
+  activarDeslizables();
 }
 
 function renderResumen(){
@@ -1247,19 +1330,16 @@ function renderGastos(){
   const lf = document.getElementById('listaFijos');
   lf.innerHTML = state.gastosFijos.map(g=>{
     const r = obtenerRegistroFijo(selectedMonth, g);
-    return `<div class="fila">
-      <div class="nombre">${g.nombre}<small>${g.freq}${g.diaVenc? ' · día '+g.diaVenc:''}${g.metodo && g.metodo!=='domiciliado' ? ' · '+(g.metodo==='efectivo'?'Efectivo':'Tarjeta') : ''}</small></div>
+    const fila = `<div class="fila">
+      <div class="nombre" onclick="abrirVencFijo('${g.id}')" style="cursor:pointer;">${g.nombre}<small>${g.freq}${g.diaVenc? ' · día '+g.diaVenc:''}${g.metodo && g.metodo!=='domiciliado' ? ' · '+(g.metodo==='efectivo'?'Efectivo':'Tarjeta') : ''} · 📅 tocar para editar día/método</small></div>
       <div class="monto">
-        <input type="number" step="0.01" value="${r.monto}" style="width:70px;padding:5px;border:1px solid var(--borde);border-radius:6px;font-family:'Segoe UI',sans-serif;background:var(--crema);color:var(--tinta);" onchange="setRegistroFijo(selectedMonth,'${g.id}','monto', Number(this.value)||0); render();">
+        <input type="number" step="0.01" value="${r.monto}" style="width:70px;padding:5px;border:1px solid var(--borde);border-radius:6px;font-family:'Segoe UI',sans-serif;background:var(--crema);color:var(--tinta);" onchange="setRegistroFijo(selectedMonth,'${g.id}','monto', Number(this.value)||0); render();" onclick="event.stopPropagation();">
       </div>
-      <label style="display:flex; align-items:center; gap:4px; font-size:0.7rem; font-family:'Segoe UI',sans-serif;">
+      <label style="display:flex; align-items:center; gap:4px; font-size:0.7rem; font-family:'Segoe UI',sans-serif;" onclick="event.stopPropagation();">
         <input type="checkbox" ${r.pagado?'checked':''} style="width:auto;" onchange="setRegistroFijo(selectedMonth,'${g.id}','pagado', this.checked); render();"> pagado
       </label>
-      <div class="acciones">
-        <button class="icon-btn" onclick="abrirVencFijo('${g.id}')">📅</button>
-        <button class="icon-btn" onclick="borrarFijo('${g.id}')">🗑️</button>
-      </div>
     </div>`;
+    return swipeRow(fila, `borrarFijo('${g.id}')`);
   }).join('');
   document.getElementById('totalFijos').textContent = euros(totalFijosMensual());
 
@@ -1278,11 +1358,11 @@ function renderGastos(){
       </div>
       ${items.map(g=>{
         const esVinculado = !!g.vinculado;
-        return `<div class="fila">
+        const fila = `<div class="fila">
           <div class="nombre" ${esVinculado?'':`onclick="abrirFormGasto('${g.id}')" style="cursor:pointer;"`}>${g.concepto}<small>${g.categoria}${g.metodo? ' · '+(g.metodo==='efectivo'?'Efectivo':'Tarjeta'):''}${g.proveedor? ' · '+g.proveedor:''}${g.usuario? ' · '+g.usuario:''}${g.origen==='acumulado'? ' · 💰 dinero acumulado':''}</small></div>
-          <div class="monto rojo">${euros(g.monto)}</div>
-          <div class="acciones">${esVinculado ? '<span title="Se gestiona desde la pestaña Préstamo" style="cursor:pointer;" onclick="cambiarTab(\'prestamo\')">🔒</span>' : `<button class="icon-btn" onclick="borrarVariable('${g.id}')">🗑️</button>`}</div>
+          <div class="monto rojo">${euros(g.monto)}${esVinculado? ' 🔒':''}</div>
         </div>`;
+        return esVinculado ? fila : swipeRow(fila, `borrarVariable('${g.id}')`);
       }).join('')}
     </div>`;
   }).join('');
@@ -1329,9 +1409,9 @@ function aplicarSeccionesColapsadas(){
 function renderProveedoresLista(){
   const cont = document.getElementById('listaProveedores');
   if(!cont) return;
-  cont.innerHTML = state.proveedores.map(p=>`
-    <div class="fila"><div class="nombre">${p}</div><div class="acciones"><button class="icon-btn" onclick="borrarProveedor('${p.replace(/'/g,"\\'")}')">🗑️</button></div></div>
-  `).join('');
+  cont.innerHTML = state.proveedores.map(p=>
+    swipeRow(`<div class="fila"><div class="nombre">${p}</div></div>`, `borrarProveedor('${p.replace(/'/g,"\\'")}')`)
+  ).join('');
 }
 function abrirFormProveedor(){
   document.getElementById('pvNombre').value='';
@@ -1344,13 +1424,11 @@ function guardarProveedor(){
   guardarEnNube(); cerrarOverlay('overlayProveedor'); render();
 }
 function borrarProveedor(nombre){
-  if(!confirmarBorradoDoble('¿Eliminar el proveedor "'+nombre+'"?')) return;
   state.proveedores = state.proveedores.filter(p=>p!==nombre);
   guardarEnNube(); render();
 }
 
 function borrarFijo(id){
-  if(!confirmarBorradoDoble('¿Eliminar este gasto fijo? Ya no se contará cada mes.')) return;
   state.gastosFijos = state.gastosFijos.filter(x=>x.id!==id);
   guardarEnNube(); render();
 }
@@ -1481,20 +1559,81 @@ function obtenerMarcadosChecklistHoy(){
 function guardarMarcadosChecklist(estado){
   localStorage.setItem('anahy-checklist-estado', JSON.stringify(estado));
 }
+const DENOMINACIONES = [0.01,0.02,0.05,0.10,0.20,0.50,1,2,5,10,20,50];
+function abrirArqueo(){
+  document.getElementById('arqFecha').value = new Date().toISOString().slice(0,10);
+  const cont = document.getElementById('arqMonedas');
+  cont.innerHTML = DENOMINACIONES.map(d=>`
+    <div class="fila">
+      <div class="nombre">${d<1 ? (d*100).toFixed(0)+' cent.' : d+'€'}</div>
+      <div class="monto">
+        <input type="number" min="0" step="1" id="arqDenom-${d}" placeholder="0" oninput="calcularArqueo()" style="width:70px;padding:5px;border:1px solid var(--borde);border-radius:6px;font-family:'Segoe UI',sans-serif;background:var(--crema);color:var(--tinta);">
+      </div>
+    </div>
+  `).join('');
+  cargarArqueo();
+  abrirOverlay('overlayArqueo');
+}
+function cargarArqueo(){
+  const fecha = document.getElementById('arqFecha').value;
+  const guardado = state.arqueoCaja && state.arqueoCaja[fecha];
+  document.getElementById('arqEfectivoX').value = guardado ? guardado.efectivoX : '';
+  document.getElementById('arqTarjetaX').value = guardado ? guardado.tarjetaX : '';
+  document.getElementById('arqBizumX').value = guardado ? guardado.bizumX : '';
+  DENOMINACIONES.forEach(d=>{
+    const input = document.getElementById('arqDenom-'+d);
+    if(input) input.value = guardado && guardado.monedas && guardado.monedas[d] ? guardado.monedas[d] : '';
+  });
+  calcularArqueo();
+}
+function calcularArqueo(){
+  let total = 0;
+  DENOMINACIONES.forEach(d=>{
+    const cantidad = Number(document.getElementById('arqDenom-'+d)?.value)||0;
+    total += cantidad * d;
+  });
+  document.getElementById('arqTotalContado').textContent = euros(total);
+  const efectivoX = Number(document.getElementById('arqEfectivoX').value)||0;
+  const descuadre = total - efectivoX;
+  const el = document.getElementById('arqDescuadre');
+  el.textContent = euros(descuadre);
+  el.className = 'monto ' + (descuadre>0?'verde':(descuadre<0?'rojo':''));
+}
+function guardarArqueo(){
+  const fecha = document.getElementById('arqFecha').value;
+  if(!fecha){ alert('Indica la fecha.'); return; }
+  const monedas = {};
+  DENOMINACIONES.forEach(d=>{
+    const cantidad = Number(document.getElementById('arqDenom-'+d)?.value)||0;
+    if(cantidad>0) monedas[d] = cantidad;
+  });
+  if(!state.arqueoCaja) state.arqueoCaja = {};
+  state.arqueoCaja[fecha] = {
+    efectivoX: Number(document.getElementById('arqEfectivoX').value)||0,
+    tarjetaX: Number(document.getElementById('arqTarjetaX').value)||0,
+    bizumX: Number(document.getElementById('arqBizumX').value)||0,
+    monedas
+  };
+  guardarEnNube();
+  alert('Arqueo guardado.');
+  cerrarOverlay('overlayArqueo');
+}
+
 function abrirChecklist(){
   document.getElementById('clFechaHoy').textContent = formatearFecha(new Date().toISOString().slice(0,10));
   renderChecklist();
   abrirOverlay('overlayChecklist');
+  activarDeslizables();
 }
 function renderChecklist(){
   const estado = obtenerMarcadosChecklistHoy();
-  document.getElementById('listaChecklist').innerHTML = state.checklistItems.map((texto, i)=>`
-    <label style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px dashed var(--borde); font-family:'Segoe UI',sans-serif; font-size:0.9rem;">
+  document.getElementById('listaChecklist').innerHTML = state.checklistItems.map((texto, i)=>
+    swipeRow(`<label style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px dashed var(--borde); font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--superficie); margin:0;">
       <input type="checkbox" style="width:auto;" ${estado.marcados[i]?'checked':''} onchange="toggleItemChecklist(${i}, this.checked)">
       <span style="${estado.marcados[i]?'text-decoration:line-through; color:var(--tinta-suave);':''}">${texto}</span>
-      <button type="button" class="icon-btn" style="margin-left:auto;" onclick="borrarItemChecklist(${i})">🗑️</button>
-    </label>
-  `).join('');
+    </label>`, `borrarItemChecklist(${i})`)
+  ).join('');
+  activarDeslizables();
 }
 function toggleItemChecklist(i, marcado){
   const estado = obtenerMarcadosChecklistHoy();
@@ -1511,7 +1650,6 @@ function agregarItemChecklist(){
   renderChecklist();
 }
 function borrarItemChecklist(i){
-  if(!confirmarBorradoDoble('¿Eliminar esta tarea de la lista?')) return;
   state.checklistItems.splice(i,1);
   guardarEnNube();
   const estado = obtenerMarcadosChecklistHoy();
@@ -1586,11 +1724,11 @@ function renderIngresos(){
       d.tarjeta? 'Tarjeta '+euros(d.tarjeta):null,
       d.bizum? 'Bizum '+euros(d.bizum):null
     ].filter(Boolean).join(' · ') : '';
-    return `<div class="fila">
+    const fila = `<div class="fila">
       <div class="nombre" onclick="abrirFormIngreso('${x.id}')" style="cursor:pointer;">${formatearFecha(x.fecha)}<small>${partes}${x.nota? (partes?' — ':'')+x.nota:''}${x.usuario? ' · '+x.usuario:''}</small></div>
       <div class="monto verde">${euros(x.monto)}</div>
-      <div class="acciones"><button class="icon-btn" onclick="borrarIngreso('${x.id}')">🗑️</button></div>
     </div>`;
+    return swipeRow(fila, `borrarIngreso('${x.id}')`);
   }).join('');
   document.getElementById('totalIngresosTab').textContent = euros(totalIngresosMes());
   if(!document.getElementById('diaResumenFecha').value){
@@ -1609,6 +1747,7 @@ function renderResumenDia(){
   const gastosAcumuladoDia = gastosDia.filter(g=>g.origen==='acumulado');
   const efectivo = ingresosDia.reduce((s,x)=>s+Number(x.desglose?.efectivo||0),0);
   const tarjeta = ingresosDia.reduce((s,x)=>s+Number(x.desglose?.tarjeta||0),0);
+  const bizum = ingresosDia.reduce((s,x)=>s+Number(x.desglose?.bizum||0),0);
   const totalGas = gastosCajaDia.reduce((s,x)=>s+Number(x.monto),0);
   const gastosEfectivo = gastosCajaDia.filter(g=>g.metodo==='efectivo').reduce((s,x)=>s+Number(x.monto),0);
 
@@ -1620,7 +1759,7 @@ function renderResumenDia(){
   });
 
   const efectivoTotalGenerado = gastosEfectivo + efectivo;
-  const neto = efectivo + tarjeta;
+  const neto = efectivo + tarjeta + bizum;
 
   const idFiadosDia = 'rd-fiados';
   const idGastosDia = 'rd-gastos';
@@ -1663,6 +1802,7 @@ function renderResumenDia(){
     <div class="fila"><div class="nombre">Efectivo máquina</div><div class="monto verde">${euros(efectivo)}</div></div>
     <div class="fila"><div class="nombre">Efectivo total generado <small>(para comparar con el tiquet)</small></div><div class="monto verde">${euros(efectivoTotalGenerado)}</div></div>
     <div class="fila"><div class="nombre">Tarjeta máquina</div><div class="monto verde">${euros(tarjeta)}</div></div>
+    ${bizum ? `<div class="fila"><div class="nombre">Bizum</div><div class="monto verde">${euros(bizum)}</div></div>` : ''}
     <div class="total-linea"><span>Neto del día</span><span>${euros(neto)}</span></div>
   `;
 
@@ -1728,14 +1868,11 @@ function renderFiados(){
   else{
     lf.innerHTML = ordenado.map(f=>{
       const sem = f.monto>1000?'rojo':(f.monto>300?'amarillo':'verde');
-      return `<div class="fila">
+      const fila = `<div class="fila">
         <div class="nombre" onclick="abrirDetalleFiado('${f.id}')" style="cursor:pointer;"><span class="semaforo ${sem}"></span>${f.cliente}${f.historial && f.historial.length ? '<small>Último movimiento: '+formatearFecha(f.historial[f.historial.length-1].fecha)+' · '+euros(f.historial[f.historial.length-1].monto)+'</small>' : '<small>Toca para ver detalle</small>'}</div>
         <div class="monto rojo">${euros(f.monto)}</div>
-        <div class="acciones">
-          <button class="icon-btn" onclick="abrirPagoFiado('${f.id}')">💶</button>
-          <button class="icon-btn" onclick="borrarFiado('${f.id}')">🗑️</button>
-        </div>
       </div>`;
+      return swipeRow(fila, `borrarFiado('${f.id}')`);
     }).join('');
   }
   document.getElementById('totalFiados').textContent = euros(totalFiadosPendiente());
@@ -1860,15 +1997,13 @@ function renderStock(){
     const icono = c.devolucion ? '✅' : '☠️';
     const esUrgenteYSinDevolucion = c.diasMin<3 && !c.devolucion;
     const estiloTarjeta = esUrgenteYSinDevolucion ? 'padding:14px; margin-bottom:10px; background:rgba(193,68,59,0.16); border:1px solid var(--rojo);' : 'padding:14px; margin-bottom:10px;';
-    return `<div class="card" style="${estiloTarjeta}" onclick="abrirFormCaducidad('${c.id}')">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-        <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem;">${icono} ${c.nombre}</div>
-        <button class="icon-btn" onclick="event.stopPropagation(); borrarCaducidad('${c.id}')">🗑️</button>
-      </div>
+    const fila = `<div class="card" style="${estiloTarjeta}" onclick="abrirFormCaducidad('${c.id}')">
+      <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem;">${icono} ${c.nombre}</div>
       <div style="font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.95rem; color:${color}; margin-top:6px; display:flex; align-items:center; gap:6px;">
         <span class="semaforo ${sem}"></span>⏰ ${textoGrande}
       </div>
     </div>`;
+    return swipeRow(fila, `borrarCaducidad('${c.id}')`);
   }).join('');
 
   renderFamiliasLista();
@@ -1926,7 +2061,6 @@ function guardarCaducidad(){
   guardarEnNube(); cerrarOverlay('overlayCaducidad'); caducidadEditandoId=null; render();
 }
 function borrarCaducidad(id){
-  if(!confirmarBorradoDoble('¿Eliminar este producto de caducidad?')) return;
   state.caducidades = state.caducidades.filter(x=>x.id!==id);
   guardarEnNube(); render();
 }
@@ -1934,9 +2068,9 @@ function borrarCaducidad(id){
 function renderFamiliasLista(){
   const cont = document.getElementById('listaFamilias');
   if(!cont) return;
-  cont.innerHTML = state.familiasCaducidad.map(f=>`
-    <div class="fila"><div class="nombre" onclick="verProductosFamilia('${f.replace(/'/g,"\\'")}')" style="cursor:pointer;">${f}</div><div class="acciones"><button class="icon-btn" onclick="borrarFamilia('${f.replace(/'/g,"\\'")}')">🗑️</button></div></div>
-  `).join('');
+  cont.innerHTML = state.familiasCaducidad.map(f=>
+    swipeRow(`<div class="fila"><div class="nombre" onclick="verProductosFamilia('${f.replace(/'/g,"\\'")}')" style="cursor:pointer;">${f}</div></div>`, `borrarFamilia('${f.replace(/'/g,"\\'")}')`)
+  ).join('');
 }
 function verProductosFamilia(familia){
   const hoy = new Date(); hoy.setHours(0,0,0,0);
@@ -1975,7 +2109,6 @@ function guardarFamilia(){
   guardarEnNube(); cerrarOverlay('overlayFamilia'); render();
 }
 function borrarFamilia(nombre){
-  if(!confirmarBorradoDoble('¿Eliminar la familia "'+nombre+'"? Los productos que la tenían asignada no se borrarán, solo quedarán sin familia.')) return;
   state.familiasCaducidad = state.familiasCaducidad.filter(f=>f!==nombre);
   guardarEnNube(); render();
 }
@@ -1987,7 +2120,11 @@ function confirmarBorradoDoble(mensaje){
   return true;
 }
 
-function abrirOverlay(id){ document.getElementById(id).classList.add('show'); document.body.style.overflow='hidden'; }
+function abrirOverlay(id){
+  document.querySelectorAll('.form-overlay.show').forEach(el=>{ if(el.id!==id) el.classList.remove('show'); });
+  document.getElementById(id).classList.add('show');
+  document.body.style.overflow='hidden';
+}
 function cerrarOverlay(id){
   document.getElementById(id).classList.remove('show');
   const algunaAbierta = document.querySelector('.form-overlay.show');
@@ -2055,7 +2192,6 @@ function guardarGasto(){
   guardarEnNube(); cerrarOverlay('overlayGasto'); gastoEditandoId=null; render();
 }
 function borrarVariable(id){
-  if(!confirmarBorradoDoble('¿Eliminar este gasto imprevisto?')) return;
   state.gastosVariables = state.gastosVariables.filter(x=>x.id!==id); guardarEnNube(); render();
 }
 
@@ -2095,7 +2231,6 @@ function guardarIngreso(){
   guardarEnNube(); cerrarOverlay('overlayIngreso'); ingresoEditandoId = null; render();
 }
 function borrarIngreso(id){
-  if(!confirmarBorradoDoble('¿Eliminar este ingreso?')) return;
   state.ingresos = state.ingresos.filter(x=>x.id!==id); guardarEnNube(); render();
 }
 
@@ -2116,7 +2251,6 @@ function guardarFiado(){
   guardarEnNube(); cerrarOverlay('overlayFiado'); render();
 }
 function borrarFiado(id){
-  if(!confirmarBorradoDoble('¿Eliminar este cliente de la lista de fiados? Se perderá todo su historial.')) return;
   state.fiados = state.fiados.filter(x=>x.id!==id);
   guardarEnNube(); render();
 }
@@ -2132,17 +2266,17 @@ function abrirDetalleFiado(id){
   document.getElementById('dfContacto').textContent = contactoPartes.length ? contactoPartes.join(' · ') : 'Sin teléfono ni nota guardados.';
   const hist = [...(f.historial||[])].sort((a,b)=> b.fecha.localeCompare(a.fecha));
   document.getElementById('dfHistorialVacio').style.display = hist.length? 'none':'block';
-  document.getElementById('dfHistorial').innerHTML = hist.map(h=>`
-    <div class="fila"><div class="nombre">${formatearFecha(h.fecha)}${h.tipo==='deuda'?'<small>Nueva compra fiada'+(h.nota?': '+h.nota:'')+'</small>':'<small>Pago recibido</small>'}</div><div class="monto ${h.tipo==='deuda'?'rojo':'verde'}">${h.tipo==='deuda'?'+':'-'}${euros(h.monto)}</div><div class="acciones"><button class="icon-btn" onclick="borrarMovimientoFiado('${h.id}')">🗑️</button></div></div>
-  `).join('');
+  document.getElementById('dfHistorial').innerHTML = hist.map(h=>
+    swipeRow(`<div class="fila"><div class="nombre">${formatearFecha(h.fecha)}${h.tipo==='deuda'?'<small>Nueva compra fiada'+(h.nota?': '+h.nota:'')+'</small>':'<small>Pago recibido</small>'}</div><div class="monto ${h.tipo==='deuda'?'rojo':'verde'}">${h.tipo==='deuda'?'+':'-'}${euros(h.monto)}</div></div>`, `borrarMovimientoFiado('${h.id}')`)
+  ).join('');
   abrirOverlay('overlayDetalleFiado');
+  activarDeslizables();
 }
 function borrarMovimientoFiado(movId){
   const f = state.fiados.find(x=>x.id===fiadoActivoId);
   if(!f) return;
   const mov = (f.historial||[]).find(h=>h.id===movId);
   if(!mov) return;
-  if(!confirmarBorradoDoble('¿Eliminar este movimiento? Se ajustará la deuda del cliente.')) return;
   if(mov.tipo==='deuda'){
     f.monto = Math.max(0, Number(f.monto) - Number(mov.monto));
   } else {
@@ -2156,6 +2290,7 @@ function borrarMovimientoFiado(movId){
 function abrirAjusteMontoFiado(){
   const f = state.fiados.find(x=>x.id===fiadoActivoId);
   document.getElementById('amfMonto').value = f.monto;
+  cerrarOverlay('overlayDetalleFiado');
   abrirOverlay('overlayAjusteMontoFiado');
 }
 function guardarAjusteMontoFiado(){
@@ -2171,6 +2306,7 @@ function abrirAumentoDeuda(){
   document.getElementById('adMonto').value = '';
   document.getElementById('adFecha').value = new Date().toISOString().slice(0,10);
   document.getElementById('adNota').value = '';
+  cerrarOverlay('overlayDetalleFiado');
   abrirOverlay('overlayAumentoDeuda');
 }
 function guardarAumentoDeuda(){
@@ -2184,7 +2320,7 @@ function guardarAumentoDeuda(){
     f.historial = f.historial || [];
     f.historial.push({id:cid(), fecha, monto, tipo:'deuda', nota});
   }
-  guardarEnNube(); cerrarOverlay('overlayAumentoDeuda'); cerrarOverlay('overlayDetalleFiado'); render();
+  guardarEnNube(); cerrarOverlay('overlayAumentoDeuda'); abrirDetalleFiado(fiadoActivoId); render();
 }
 function abrirPagoFiadoDesdeDetalle(){
   cerrarOverlay('overlayDetalleFiado');
