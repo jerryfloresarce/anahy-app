@@ -140,9 +140,9 @@
 
   .swipe-wrap{ position:relative; overflow:hidden; }
   .swipe-delete-bg{
-    position:absolute; inset:0; background:var(--rojo); color:#fff;
+    position:absolute; inset:0; background:#C08479; color:#fff;
     display:flex; align-items:center; justify-content:flex-end; padding-right:22px;
-    font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.85rem; cursor:pointer;
+    font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.85rem; cursor:pointer;
   }
   .swipe-content{ position:relative; background:var(--superficie); touch-action:pan-y; }
   .swipe-content .fila{ background:var(--superficie); }
@@ -159,6 +159,7 @@
   .total-linea{ display:flex; justify-content:space-between; font-family:'Segoe UI',sans-serif; font-weight:700; padding-top:10px; margin-top:6px; border-top:2px solid var(--tinta); }
 
   .btn{ font-family:'Segoe UI',sans-serif; background: var(--papaya); color:#fff; border:none; padding:11px 16px; border-radius:12px; font-weight:600; font-size:0.87rem; cursor:pointer; width:100%; box-shadow: 0 4px 10px rgba(232,121,45,0.35); transition: transform 0.12s ease; }
+  .btn-sticky{ position: sticky; top: 8px; z-index: 15; }
   .btn:active{ transform: scale(0.97); }
   .btn.secundario{ background: transparent; color: var(--verde-claro); border: 1.5px solid var(--verde-claro); box-shadow:none; }
   .btn.peligro{ background: var(--rojo); box-shadow: 0 4px 10px rgba(193,68,59,0.3); }
@@ -179,6 +180,13 @@
   nav.bottom button .ic{ font-size:1.22rem; transition: transform 0.15s ease; }
   nav.bottom button.active{ color: var(--verde-claro); font-weight:700; }
   nav.bottom button.active .ic{ transform: translateY(-2px); }
+
+  .fab-agregar{
+    position:fixed; left:14px; right:14px; bottom:70px; z-index:35;
+    background: var(--papaya); color:#fff; border:none; padding:13px 16px; border-radius:12px;
+    font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.9rem; cursor:pointer;
+    box-shadow: 0 4px 14px rgba(232,121,45,0.4); display:none; max-width:612px; margin:0 auto;
+  }
 
   .stock-item.low{ background: rgba(232,121,45,0.1); border-radius:10px; padding:8px; margin-bottom:4px; }
   .stock-item.low .nombre{ color: var(--rojo); font-weight:600; }
@@ -308,7 +316,6 @@
 
   <!-- GASTOS -->
   <section class="tab-panel" id="tab-gastos">
-    <button class="btn" style="margin-bottom:14px;" onclick="abrirFormGasto()">+ Añadir gasto</button>
     <div class="card">
       <h2 onclick="toggleSeccion('sec-fijos')" style="cursor:pointer; user-select:none;">Gastos fijos <span class="badge">independiente cada mes</span> <span class="chev" id="chev-sec-fijos" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
       <div id="sec-fijos" class="collapsible-content">
@@ -323,7 +330,6 @@
         <div id="listaVariables"></div>
         <div class="empty" id="emptyVariables" style="display:none;">Aún no hay gastos este mes.</div>
         <div class="total-linea"><span>Total del mes</span><span id="totalVariables">0€</span></div>
-        <button class="btn" style="margin-top:14px;" onclick="abrirFormGasto()">+ Añadir gasto</button>
       </div>
     </div>
     <div class="card">
@@ -343,7 +349,6 @@
         <div id="listaIngresos"></div>
         <div class="empty" id="emptyIngresos" style="display:none;">Aún no has apuntado ingresos este mes.</div>
         <div class="total-linea"><span>Total ingresos</span><span id="totalIngresosTab">0€</span></div>
-        <button class="btn" style="margin-top:14px;" onclick="abrirFormIngreso()">+ Añadir ingreso del día</button>
       </div>
     </div>
     <div class="card">
@@ -366,7 +371,7 @@
   <section class="tab-panel" id="tab-fiados">
     <div class="card">
       <h2 onclick="toggleSeccion('sec-fiados')" style="cursor:pointer; user-select:none;">Cuentas pendientes (fiado) <span class="chev" id="chev-sec-fiados" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
-      <button class="btn" style="margin-bottom:12px;" onclick="abrirFormFiado()">+ Añadir cliente</button>
+      <button class="btn btn-sticky" style="margin-bottom:12px;" onclick="abrirFormFiado()">+ Añadir cliente</button>
       <div id="sec-fiados" class="collapsible-content">
         <input type="text" id="buscarFiado" placeholder="🔎 Buscar cliente..." oninput="renderFiados()"
           style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-bottom:10px;">
@@ -420,7 +425,7 @@
   <section class="tab-panel" id="tab-stock">
     <div class="card">
       <h2 onclick="toggleSeccion('sec-caducidad')" style="cursor:pointer; user-select:none;">Caducidades <span class="chev" id="chev-sec-caducidad" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
-      <button class="btn" style="margin-bottom:12px;" onclick="abrirFormCaducidad()">+ Añadir producto</button>
+      <button class="btn btn-sticky" style="margin-bottom:12px;" onclick="abrirFormCaducidad()">+ Añadir producto</button>
       <div id="sec-caducidad" class="collapsible-content">
         <input type="text" id="buscarCaducidad" placeholder="🔎 Buscar producto..." oninput="renderStock()"
           style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-bottom:8px;">
@@ -444,6 +449,8 @@
   </section>
 
 </main>
+
+<button class="fab-agregar" id="fabAgregar"></button>
 
 <nav class="bottom">
   <button onclick="cambiarTab('resumen')" data-tab="resumen"><span class="ic">🏠</span>Inicio</button>
@@ -685,7 +692,7 @@
       <h3 style="margin:0;">🧮 Cierre de caja</h3>
       <button class="icon-btn" style="font-size:1.4rem;" onclick="cerrarOverlay('overlayArqueo')">✕</button>
     </div>
-    <p style="font-size:0.75rem; color:var(--tinta-suave); margin-top:4px;">Tu cuaderno personal — no afecta a ningún otro cálculo de la app.</p>
+    <p style="font-size:0.75rem; color:var(--tinta-suave); margin-top:4px;">Tu cuaderno personal — no afecta a ningún otro cálculo de la app. Se guarda para siempre por fecha (no se borra cada día como el checklist); elige el día en el calendario para consultarlo cuando quieras.</p>
     <input type="date" id="arqFecha" onchange="cargarArqueo()" style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; background:var(--crema); color:var(--tinta); margin:10px 0;">
 
     <h3 style="font-size:0.9rem;">Arqueo X (lo que dice la máquina)</h3>
@@ -824,7 +831,9 @@
 
 <div class="form-overlay" id="overlayFijoVenc">
   <div class="form-sheet">
-    <h3>Detalles de <span id="fvNombreGasto"></span></h3>
+    <h3>Detalles del gasto fijo</h3>
+    <label>Nombre</label>
+    <input type="text" id="fvNombreGasto">
     <label>Día del mes en que se paga (1-31, opcional)</label>
     <input type="number" min="1" max="31" id="fvDia" placeholder="Ej. 5">
     <label>Forma de pago</label>
@@ -925,7 +934,7 @@ function euros(n){ return (Math.round((n||0)*100)/100).toLocaleString('es-ES',{m
 function plural(n, singular, pluralForm){ return Math.abs(n)===1 ? singular : pluralForm; }
 
 function swipeRow(innerHtml, deleteAction){
-  return `<div class="swipe-wrap"><div class="swipe-delete-bg" onclick="${deleteAction}">🗑️ Eliminar</div><div class="swipe-content">${innerHtml}</div></div>`;
+  return `<div class="swipe-wrap"><div class="swipe-delete-bg" onclick="${deleteAction}">Eliminar</div><div class="swipe-content">${innerHtml}</div></div>`;
 }
 function activarDeslizables(){
   document.querySelectorAll('.swipe-content').forEach(el=>{
@@ -950,6 +959,11 @@ function activarDeslizables(){
       dragging=false;
       el.style.transition='transform 0.2s ease';
       el.style.transform = currentX < -48 ? 'translateX(-90px)' : 'translateX(0)';
+    });
+    el.addEventListener('touchcancel', ()=>{
+      dragging=false;
+      el.style.transition='transform 0.2s ease';
+      el.style.transform = 'translateX(0)';
     });
   });
 }
@@ -1173,7 +1187,18 @@ function cambiarTab(tab){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  actualizarFabAgregar();
   render();
+}
+function actualizarFabAgregar(){
+  const fab = document.getElementById('fabAgregar');
+  if(activeTab==='gastos'){
+    fab.style.display='block'; fab.textContent='+ Añadir gasto'; fab.onclick=()=>abrirFormGasto();
+  } else if(activeTab==='ingresos'){
+    fab.style.display='block'; fab.textContent='+ Añadir ingreso del día'; fab.onclick=()=>abrirFormIngreso();
+  } else {
+    fab.style.display='none';
+  }
 }
 
 function cambiarMes(delta){
@@ -1701,16 +1726,17 @@ let fijoVencActivoId = null;
 function abrirVencFijo(id){
   fijoVencActivoId = id;
   const g = state.gastosFijos.find(x=>x.id===id);
-  document.getElementById('fvNombreGasto').textContent = g.nombre;
+  document.getElementById('fvNombreGasto').value = g.nombre;
   document.getElementById('fvDia').value = g.diaVenc || '';
   document.getElementById('fvMetodo').value = g.metodo || 'domiciliado';
   abrirOverlay('overlayFijoVenc');
 }
 function guardarVencimientoFijo(){
   const g = state.gastosFijos.find(x=>x.id===fijoVencActivoId);
+  const nombre = document.getElementById('fvNombreGasto').value.trim();
   const dia = Number(document.getElementById('fvDia').value) || null;
   const metodo = document.getElementById('fvMetodo').value;
-  if(g){ g.diaVenc = dia; g.metodo = metodo; guardarEnNube(); }
+  if(g){ if(nombre) g.nombre = nombre; g.diaVenc = dia; g.metodo = metodo; guardarEnNube(); }
   cerrarOverlay('overlayFijoVenc'); render();
 }
 
@@ -2123,12 +2149,9 @@ function confirmarBorradoDoble(mensaje){
 function abrirOverlay(id){
   document.querySelectorAll('.form-overlay.show').forEach(el=>{ if(el.id!==id) el.classList.remove('show'); });
   document.getElementById(id).classList.add('show');
-  document.body.style.overflow='hidden';
 }
 function cerrarOverlay(id){
   document.getElementById(id).classList.remove('show');
-  const algunaAbierta = document.querySelector('.form-overlay.show');
-  if(!algunaAbierta) document.body.style.overflow='';
 }
 document.addEventListener('click', function(e){
   if(e.target.classList && e.target.classList.contains('form-overlay') && e.target.classList.contains('show')){
