@@ -140,7 +140,7 @@
 
   .swipe-wrap{ position:relative; overflow:hidden; }
   .swipe-delete-bg{
-    position:absolute; inset:0; background:#C08479; color:#fff;
+    position:absolute; inset:0; background:#E23F3F; color:#fff;
     display:flex; align-items:center; justify-content:flex-end; padding-right:22px;
     font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.85rem; cursor:pointer;
   }
@@ -166,9 +166,9 @@
 
   .empty{ font-family:'Segoe UI',sans-serif; text-align:center; color:var(--tinta-suave); padding: 22px 10px; font-size:0.86rem; }
 
-  .form-overlay{ position:fixed; inset:0; background: rgba(20,18,14,0.55); display:none; align-items:flex-end; justify-content:center; z-index:50; }
+  .form-overlay{ position:fixed; inset:0; background: rgba(20,18,14,0.55); display:none; align-items:flex-end; justify-content:center; z-index:50; overscroll-behavior:contain; }
   .form-overlay.show{ display:flex; }
-  .form-sheet{ background: var(--superficie); width:100%; max-width:640px; border-radius: 20px 20px 0 0; padding: 20px 18px 26px 18px; font-family:'Segoe UI',sans-serif; max-height:86vh; overflow-y:auto; animation: slideup 0.25s ease; }
+  .form-sheet{ background: var(--superficie); width:100%; max-width:640px; border-radius: 20px 20px 0 0; padding: 20px 18px 26px 18px; font-family:'Segoe UI',sans-serif; max-height:86vh; overflow-y:auto; overscroll-behavior:contain; animation: slideup 0.25s ease; }
   @keyframes slideup{ from{ transform: translateY(30px); opacity:0.6; } to{ transform:translateY(0); opacity:1; } }
   .form-sheet h3{ margin:0 0 14px 0; font-family:Georgia,serif; }
   .form-sheet label{ display:block; font-size:0.75rem; color:var(--tinta-suave); margin:10px 0 4px 0; }
@@ -2021,8 +2021,7 @@ function renderStock(){
     const color = c.diasMin<3 ? 'var(--rojo)' : (c.diasMin<7 ? 'var(--papaya-oscuro)' : 'var(--verde-claro)');
     const textoGrande = c.diasMin<0 ? 'Caducó hace '+Math.abs(c.diasMin)+' '+plural(c.diasMin,'día','días') : (c.diasMin===0 ? 'Caduca hoy' : 'Caduca en '+c.diasMin+' '+plural(c.diasMin,'día','días'));
     const icono = c.devolucion ? '✅' : '☠️';
-    const esUrgenteYSinDevolucion = c.diasMin<3 && !c.devolucion;
-    const estiloTarjeta = esUrgenteYSinDevolucion ? 'padding:14px; margin-bottom:10px; background:rgba(193,68,59,0.16); border:1px solid var(--rojo);' : 'padding:14px; margin-bottom:10px;';
+    const estiloTarjeta = 'padding:14px; margin-bottom:10px;';
     const fila = `<div class="card" style="${estiloTarjeta}" onclick="abrirFormCaducidad('${c.id}')">
       <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem;">${icono} ${c.nombre}</div>
       <div style="font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.95rem; color:${color}; margin-top:6px; display:flex; align-items:center; gap:6px;">
