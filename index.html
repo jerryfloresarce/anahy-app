@@ -138,7 +138,7 @@
 
   .fila{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px dashed var(--borde); font-family:'Segoe UI',sans-serif; font-size:0.89rem; gap:10px; }
 
-  .swipe-wrap{ position:relative; overflow:hidden; }
+  .swipe-wrap{ position:relative; overflow:hidden; margin-bottom:2px; }
   .swipe-delete-bg{
     position:absolute; inset:0; background:#E23F3F; color:#fff;
     display:flex; align-items:center; justify-content:flex-end; padding-right:22px;
@@ -2021,7 +2021,7 @@ function renderStock(){
     const color = c.diasMin<3 ? 'var(--rojo)' : (c.diasMin<7 ? 'var(--papaya-oscuro)' : 'var(--verde-claro)');
     const textoGrande = c.diasMin<0 ? 'Caducó hace '+Math.abs(c.diasMin)+' '+plural(c.diasMin,'día','días') : (c.diasMin===0 ? 'Caduca hoy' : 'Caduca en '+c.diasMin+' '+plural(c.diasMin,'día','días'));
     const icono = c.devolucion ? '✅' : '☠️';
-    const estiloTarjeta = 'padding:14px; margin-bottom:10px;';
+    const estiloTarjeta = 'padding:14px; margin:0;';
     const fila = `<div class="card" style="${estiloTarjeta}" onclick="abrirFormCaducidad('${c.id}')">
       <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem;">${icono} ${c.nombre}</div>
       <div style="font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.95rem; color:${color}; margin-top:6px; display:flex; align-items:center; gap:6px;">
