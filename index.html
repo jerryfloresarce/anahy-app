@@ -361,16 +361,19 @@
       <h2 onclick="toggleSeccion('sec-fiados')" style="cursor:pointer; user-select:none;">Cuentas pendientes (fiado) <span class="chev" id="chev-sec-fiados" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
       <div class="total-linea" style="margin-top:0; padding-top:0; border-top:none;"><span>Total pendiente</span><span id="totalFiados">0€</span></div>
       <div id="sec-fiados" class="collapsible-content" style="margin-top:10px;">
-        <input type="text" id="buscarFiado" placeholder="🔎 Buscar cliente..." oninput="renderFiados()"
-          style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-bottom:8px;">
-        <select id="filtroFiado" onchange="renderFiados()" style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-bottom:10px;">
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="buscarFiado" placeholder="🔎 Buscar cliente..." oninput="renderFiados()"
+            style="flex:1; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta);">
+          <button class="icon-btn" style="font-size:1.2rem; border:1px solid var(--borde); border-radius:9px; width:44px; background:var(--crema);" onclick="toggleFiltroPanel('filtroFiado')">🔽</button>
+        </div>
+        <select id="filtroFiado" onchange="renderFiados()" style="display:none; width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-top:8px;">
           <option value="deuda_desc">Mayor a menor deuda</option>
           <option value="deuda_asc">Menor a mayor deuda</option>
           <option value="sin_pagar">Más tiempo sin pagar primero</option>
           <option value="pagando">Han pagado más recientemente primero</option>
           <option value="az">Alfabético (A-Z)</option>
         </select>
-        <div id="listaFiados"></div>
+        <div id="listaFiados" style="margin-top:10px;"></div>
       </div>
     </div>
     <div class="card">
@@ -424,25 +427,30 @@
   <!-- CADUCIDAD -->
   <section class="tab-panel" id="tab-stock">
     <div class="card">
-      <h2 onclick="toggleSeccion('sec-caducidad')" style="cursor:pointer; user-select:none;">Caducidades <span class="chev" id="chev-sec-caducidad" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
-      <button class="btn btn-sticky" style="margin-bottom:12px;" onclick="abrirFormCaducidad()">+ Añadir producto</button>
-      <div id="sec-caducidad" class="collapsible-content">
-        <input type="text" id="buscarCaducidad" placeholder="🔎 Buscar producto..." oninput="renderStock()"
-          style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-bottom:8px;">
-        <select id="filtroCaducidad" onchange="renderStock()" style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-bottom:10px;">
-          <option value="proximos">Más próximos a caducar primero</option>
-          <option value="lejanos">Más lejanos primero</option>
-          <option value="az">Alfabético (A-Z)</option>
-          <option value="urgente">Solo urgentes (3 días o menos)</option>
-          <option value="semana">Caducan esta semana (7 días o menos)</option>
-          <option value="caducados">Ya caducados</option>
-        </select>
-        <div id="listaCaducidades"></div>
-        <div class="empty" id="emptyCaducidades" style="display:none;">Aún no hay productos con caducidad apuntados.</div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="margin:0;">Productos</h2>
+        <span class="badge" id="contadorProductos">0</span>
       </div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <input type="text" id="buscarCaducidad" placeholder="🔎 Buscar producto..." oninput="renderStock()"
+          style="flex:1; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta);">
+        <button class="icon-btn" style="font-size:1.2rem; border:1px solid var(--borde); border-radius:9px; width:44px; background:var(--crema);" onclick="toggleFiltroPanel('filtroCaducidad')">🔽</button>
+      </div>
+      <select id="filtroCaducidad" onchange="renderStock()" style="display:none; width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-top:8px;">
+        <option value="proximos">Más próximos a caducar primero</option>
+        <option value="lejanos">Más lejanos primero</option>
+        <option value="az">Alfabético (A-Z)</option>
+        <option value="urgente">Solo urgentes (3 días o menos)</option>
+        <option value="semana">Caducan esta semana (7 días o menos)</option>
+        <option value="caducados">Ya caducados</option>
+        <option value="retirados">Solo retirados</option>
+        <option value="renovados">Solo renovados</option>
+      </select>
+      <div id="listaFamiliasProductos" style="margin-top:12px;"></div>
+      <div class="empty" id="emptyCaducidades" style="display:none;">Aún no hay productos con caducidad apuntados.</div>
     </div>
     <div class="card">
-      <h2>Familias de producto</h2>
+      <h2>Gestionar familias</h2>
       <div id="listaFamilias"></div>
       <button class="btn secundario" style="margin-top:10px;" onclick="abrirFormFamilia()">+ Añadir familia</button>
     </div>
@@ -647,6 +655,21 @@
     <div class="form-btns">
       <button class="btn secundario" onclick="cerrarOverlay('overlayFiado')">Cancelar</button>
       <button class="btn" onclick="guardarFiado()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="form-overlay" id="overlayEditarMovimientoFiado">
+  <div class="form-sheet">
+    <h3>Editar movimiento</h3>
+    <p style="font-size:0.8rem; color:var(--tinta-suave);" id="emfTipoTexto"></p>
+    <label>Importe (€)</label>
+    <input type="number" step="0.01" id="emfMonto">
+    <label>Fecha</label>
+    <input type="date" id="emfFecha">
+    <div class="form-btns">
+      <button class="btn secundario" onclick="cerrarOverlay('overlayEditarMovimientoFiado'); abrirDetalleFiado(fiadoActivoId);">Cancelar</button>
+      <button class="btn" onclick="guardarEdicionMovimientoFiado()">Guardar</button>
     </div>
   </div>
 </div>
@@ -1004,6 +1027,17 @@ function formatearFecha(iso){
 function cid(){ return 'id' + Math.random().toString(36).slice(2,10); }
 function euros(n){ return (Math.round((n||0)*100)/100).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + '€'; }
 function plural(n, singular, pluralForm){ return Math.abs(n)===1 ? singular : pluralForm; }
+function fechaISO(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+function fechaHoyISO(){ return fechaISO(new Date()); }
+function toggleFiltroPanel(id){
+  const el = document.getElementById(id);
+  el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
 
 function swipeRow(innerHtml, deleteAction){
   return `<div class="swipe-wrap"><div class="swipe-delete-bg" onclick="${deleteAction}">Eliminar</div><div class="swipe-content">${innerHtml}</div></div>`;
@@ -1260,6 +1294,8 @@ function actualizarFabAgregar(){
     fab.style.display='block'; fab.textContent='+ Añadir ingreso del día'; fab.onclick=()=>abrirFormIngreso();
   } else if(activeTab==='fiados'){
     fab.style.display='block'; fab.textContent='+ Añadir cliente'; fab.onclick=()=>abrirFormFiado();
+  } else if(activeTab==='stock'){
+    fab.style.display='block'; fab.textContent='+ Añadir producto'; fab.onclick=()=>abrirFormCaducidad();
   } else {
     fab.style.display='none';
   }
@@ -1327,11 +1363,11 @@ function render(){
 }
 
 function renderResumen(){
-  const hoyISO = new Date().toISOString().slice(0,10);
+  const hoyISO = fechaHoyISO();
   const diaSemana = new Date().getDay();
   const inicioSemana = new Date();
   inicioSemana.setDate(inicioSemana.getDate() - ((diaSemana+6)%7));
-  const inicioSemanaISO = inicioSemana.toISOString().slice(0,10);
+  const inicioSemanaISO = fechaISO(inicioSemana);
 
   const ventasHoy = totalIngresosRango(hoyISO, hoyISO);
   const ventasSemana = totalIngresosRango(inicioSemanaISO, hoyISO);
@@ -1600,7 +1636,7 @@ function borrarPagoFactura(pagoId){
   render();
 }
 function abrirPagoFactura(){
-  document.getElementById('pfacFecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('pfacFecha').value = fechaHoyISO();
   document.getElementById('pfacMonto').value = '';
   document.getElementById('pfacMetodo').value = 'efectivo';
   cerrarOverlay('overlayDetalleFactura');
@@ -1726,7 +1762,7 @@ function graficoHtmlEfectivoTarjeta(){
 }
 
 function obtenerMarcadosChecklistHoy(){
-  const hoy = new Date().toISOString().slice(0,10);
+  const hoy = fechaHoyISO();
   let guardado = {};
   try{ guardado = JSON.parse(localStorage.getItem('anahy-checklist-estado') || '{}'); } catch(e){}
   if(guardado.fecha !== hoy){ guardado = { fecha: hoy, marcados: {} }; }
@@ -1737,7 +1773,7 @@ function guardarMarcadosChecklist(estado){
 }
 const DENOMINACIONES = [0.01,0.02,0.05,0.10,0.20,0.50,1,2,5,10,20,50];
 function abrirArqueo(){
-  document.getElementById('arqFecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('arqFecha').value = fechaHoyISO();
   const cont = document.getElementById('arqMonedas');
   cont.innerHTML = DENOMINACIONES.map(d=>`
     <div class="fila">
@@ -1796,7 +1832,7 @@ function guardarArqueo(){
 }
 
 function abrirChecklist(){
-  document.getElementById('clFechaHoy').textContent = formatearFecha(new Date().toISOString().slice(0,10));
+  document.getElementById('clFechaHoy').textContent = formatearFecha(fechaHoyISO());
   renderChecklist();
   abrirOverlay('overlayChecklist');
   activarDeslizables();
@@ -1847,7 +1883,7 @@ function exportarDatos(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'anahy-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.download = 'anahy-backup-' + fechaHoyISO() + '.json';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1909,7 +1945,7 @@ function renderIngresos(){
   }).join('');
   document.getElementById('totalIngresosTab').textContent = euros(totalIngresosMes());
   if(!document.getElementById('diaResumenFecha').value){
-    document.getElementById('diaResumenFecha').value = new Date().toISOString().slice(0,10);
+    document.getElementById('diaResumenFecha').value = fechaHoyISO();
   }
   renderResumenDia();
 }
@@ -2132,14 +2168,17 @@ function renderPrestamo(){
     fechaFinEl.textContent = 'Préstamo ya saldado.';
   } else {
     let restante = p.saldo;
-    let fecha = new Date();
+    let fecha = new Date(); fecha.setHours(0,0,0,0);
+    const hoyISO = fechaISO(fecha);
+    const pagoHoy = p.pagos.some(x=>x.fecha===hoyISO);
+    if(!pagoHoy && fecha.getDay()!==0){ restante -= p.cuotaDiaria; }
     let dias = 0;
     while(restante>0 && dias<400){
       fecha.setDate(fecha.getDate()+1);
       if(fecha.getDay()!==0){ restante -= p.cuotaDiaria; }
       dias++;
     }
-    fechaFinEl.textContent = 'Si paga '+euros(p.cuotaDiaria)+' cada día (menos domingos), terminaría de pagar aprox. el '+formatearFecha(fecha.toISOString().slice(0,10))+'.';
+    fechaFinEl.textContent = 'Fecha fin de este préstamo: '+formatearFecha(fechaISO(fecha));
   }
   renderAhorro();
 }
@@ -2191,7 +2230,7 @@ function guardarAportacionAhorro(){
     if(ap){ a.ahorrado = Number(a.ahorrado) - Number(ap.monto) + monto; ap.monto = monto; }
   } else {
     a.ahorrado = Number(a.ahorrado) + monto;
-    a.aportaciones.push({id:cid(), fecha: new Date().toISOString().slice(0,10), monto});
+    a.aportaciones.push({id:cid(), fecha: fechaHoyISO(), monto});
   }
   guardarEnNube(); cerrarOverlay('overlayAportacionAhorro'); aportacionAhorroEditandoId=null; render();
 }
@@ -2221,6 +2260,9 @@ function renderStock(){
   const q = (document.getElementById('buscarCaducidad')?.value || '').toLowerCase().trim();
   const filtro = document.getElementById('filtroCaducidad')?.value || 'proximos';
   const hoy = new Date(); hoy.setHours(0,0,0,0);
+
+  document.getElementById('contadorProductos').textContent = state.caducidades.length;
+
   let cads = [...state.caducidades].map(c=>{
     const fechas = c.fechas && c.fechas.length ? c.fechas : (c.fecha ? [c.fecha] : []);
     const diasPorFecha = fechas.map(f => Math.round((new Date(f+'T00:00:00')-hoy)/(1000*60*60*24))).sort((a,b)=>a-b);
@@ -2228,33 +2270,60 @@ function renderStock(){
     return {...c, fechas, diasMin};
   });
   if(q) cads = cads.filter(c => c.nombre.toLowerCase().includes(q));
-  if(filtro==='urgente') cads = cads.filter(c => c.diasMin<=3);
-  if(filtro==='semana') cads = cads.filter(c => c.diasMin<=7);
-  if(filtro==='caducados') cads = cads.filter(c => c.diasMin<0);
-  if(filtro==='az') cads.sort((a,b)=> a.nombre.localeCompare(b.nombre));
-  else if(filtro==='lejanos') cads.sort((a,b)=> b.diasMin-a.diasMin);
-  else cads.sort((a,b)=>a.diasMin-b.diasMin);
-  cads.sort((a,b)=> (a.retirado?1:0) - (b.retirado?1:0));
+  if(filtro==='urgente') cads = cads.filter(c => c.diasMin<=3 && !c.retirado);
+  if(filtro==='semana') cads = cads.filter(c => c.diasMin<=7 && !c.retirado);
+  if(filtro==='caducados') cads = cads.filter(c => c.diasMin<0 && !c.retirado);
+  if(filtro==='retirados') cads = cads.filter(c => c.retirado);
+  if(filtro==='renovados') cads = cads.filter(c => !!c.renovadoEn);
+
   document.getElementById('emptyCaducidades').style.display = cads.length? 'none':'block';
-  document.getElementById('listaCaducidades').innerHTML = cads.map(c=>{
-    if(c.retirado){
-      const fila = `<div class="card" style="padding:14px; margin:0; background:var(--crema-osc); opacity:0.65;" onclick="abrirFormCaducidad('${c.id}')">
-        <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem; color:var(--tinta-suave);">🚫 ${c.nombre} <small>(retirado)</small></div>
+
+  const porFamilia = {};
+  cads.forEach(c=>{
+    const fam = c.familia || 'Sin familia';
+    if(!porFamilia[fam]) porFamilia[fam] = [];
+    porFamilia[fam].push(c);
+  });
+  const nombresFamilias = [...state.familiasCaducidad];
+  if(porFamilia['Sin familia'] && !nombresFamilias.includes('Sin familia')) nombresFamilias.push('Sin familia');
+
+  const autoExpandir = !!q || filtro!=='proximos';
+
+  document.getElementById('listaFamiliasProductos').innerHTML = nombresFamilias.map(fam=>{
+    let productos = porFamilia[fam] || [];
+    if(!productos.length) return '';
+    if(filtro==='az') productos.sort((a,b)=> a.nombre.localeCompare(b.nombre));
+    else if(filtro==='lejanos') productos.sort((a,b)=> b.diasMin-a.diasMin);
+    else productos.sort((a,b)=>a.diasMin-b.diasMin);
+    productos.sort((a,b)=> (a.retirado?1:0) - (b.retirado?1:0));
+
+    const idFam = 'fam-productos-'+fam.replace(/[^a-zA-Z0-9]/g,'_');
+    const filas = productos.map(c=>{
+      if(c.retirado){
+        const fila = `<div class="card" style="padding:14px; margin:0; background:var(--crema-osc); opacity:0.6;" onclick="abrirFormCaducidad('${c.id}')">
+          <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.9rem; color:var(--tinta-suave);">🚫 ${c.nombre} <small>(retirado)</small></div>
+        </div>`;
+        return swipeRow(fila, `borrarCaducidad('${c.id}')`);
+      }
+      const sem = c.diasMin<3 ? 'rojo' : (c.diasMin<7 ? 'amarillo' : 'verde');
+      const color = c.diasMin<3 ? 'var(--rojo)' : (c.diasMin<7 ? 'var(--papaya-oscuro)' : 'var(--verde-claro)');
+      const textoGrande = c.diasMin<0 ? 'Caducó hace '+Math.abs(c.diasMin)+' '+plural(c.diasMin,'día','días') : (c.diasMin===0 ? 'Caduca hoy' : 'Caduca en '+c.diasMin+' '+plural(c.diasMin,'día','días'));
+      const icono = c.devolucion ? '✅' : '☠️';
+      const fila = `<div class="card" style="padding:14px; margin:0;" onclick="abrirFormCaducidad('${c.id}')">
+        <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem;">${icono} ${c.nombre}</div>
+        <div style="font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.95rem; color:${color}; margin-top:6px; display:flex; align-items:center; gap:6px;">
+          <span class="semaforo ${sem}"></span>⏰ ${textoGrande}
+        </div>
       </div>`;
       return swipeRow(fila, `borrarCaducidad('${c.id}')`);
-    }
-    const sem = c.diasMin<3 ? 'rojo' : (c.diasMin<7 ? 'amarillo' : 'verde');
-    const color = c.diasMin<3 ? 'var(--rojo)' : (c.diasMin<7 ? 'var(--papaya-oscuro)' : 'var(--verde-claro)');
-    const textoGrande = c.diasMin<0 ? 'Caducó hace '+Math.abs(c.diasMin)+' '+plural(c.diasMin,'día','días') : (c.diasMin===0 ? 'Caduca hoy' : 'Caduca en '+c.diasMin+' '+plural(c.diasMin,'día','días'));
-    const icono = c.devolucion ? '✅' : '☠️';
-    const estiloTarjeta = 'padding:14px; margin:0;';
-    const fila = `<div class="card" style="${estiloTarjeta}" onclick="abrirFormCaducidad('${c.id}')">
-      <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem;">${icono} ${c.nombre}</div>
-      <div style="font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.95rem; color:${color}; margin-top:6px; display:flex; align-items:center; gap:6px;">
-        <span class="semaforo ${sem}"></span>⏰ ${textoGrande}
+    }).join('');
+
+    return `<div style="margin-bottom:10px;">
+      <div onclick="toggleDiaFiado('${idFam}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.9rem; background:var(--crema-osc); padding:9px 12px; border-radius:8px;">
+        <span>${fam} <span class="chev" style="display:inline-block; font-weight:400;">▾</span></span><span>${productos.length}</span>
       </div>
+      <div id="${idFam}" style="display:${autoExpandir?'block':'none'}; margin-top:4px;">${filas}</div>
     </div>`;
-    return swipeRow(fila, `borrarCaducidad('${c.id}')`);
   }).join('');
 
   renderFamiliasLista();
@@ -2292,21 +2361,25 @@ function abrirFormCaducidad(id){
     document.getElementById('cdUbicacion').value='';
     document.getElementById('cdNota').value='';
     document.getElementById('cdDevolucion').checked = false;
-    agregarCampoFecha(new Date().toISOString().slice(0,10));
+    agregarCampoFecha(fechaHoyISO());
     document.getElementById('cdBotonesExtra').style.display = 'none';
   }
   abrirOverlay('overlayCaducidad');
 }
 function marcarProductoRetirado(){
   const c = state.caducidades.find(x=>x.id===caducidadEditandoId);
-  if(c){ c.retirado = !c.retirado; guardarEnNube(); }
+  if(c){
+    c.retirado = !c.retirado;
+    c.retiradoFecha = c.retirado ? fechaHoyISO() : null;
+    guardarEnNube();
+  }
   cerrarOverlay('overlayCaducidad'); render();
 }
 function marcarProductoRenovado(){
-  const nuevaFecha = prompt('Nueva fecha de caducidad (AAAA-MM-DD):', new Date().toISOString().slice(0,10));
+  const nuevaFecha = prompt('Nueva fecha de caducidad (AAAA-MM-DD):', fechaHoyISO());
   if(!nuevaFecha) return;
   const c = state.caducidades.find(x=>x.id===caducidadEditandoId);
-  if(c){ c.fechas = [nuevaFecha]; c.retirado = false; guardarEnNube(); }
+  if(c){ c.fechas = [nuevaFecha]; c.retirado = false; c.retiradoFecha = null; c.renovadoEn = fechaHoyISO(); guardarEnNube(); }
   cerrarOverlay('overlayCaducidad'); render();
 }
 function guardarCaducidad(){
@@ -2418,7 +2491,7 @@ function abrirFormGasto(id){
     sel.value = g.proveedor || '';
     document.getElementById('gEsFactura').disabled = true;
   } else {
-    document.getElementById('gFecha').value = new Date().toISOString().slice(0,10);
+    document.getElementById('gFecha').value = fechaHoyISO();
     document.getElementById('gConcepto').value='';
     document.getElementById('gMonto').value='';
     document.getElementById('gMetodo').value='efectivo';
@@ -2483,7 +2556,7 @@ function abrirFormIngreso(id){
     document.getElementById('iBizum').value = x.desglose?.bizum || '';
     document.getElementById('iNota').value = x.nota || '';
   } else {
-    document.getElementById('iFecha').value = new Date().toISOString().slice(0,10);
+    document.getElementById('iFecha').value = fechaHoyISO();
     document.getElementById('iEfectivo').value='';
     document.getElementById('iTarjeta').value='';
     document.getElementById('iBizum').value='';
@@ -2544,10 +2617,40 @@ function abrirDetalleFiado(id){
   const hist = [...(f.historial||[])].sort((a,b)=> b.fecha.localeCompare(a.fecha));
   document.getElementById('dfHistorialVacio').style.display = hist.length? 'none':'block';
   document.getElementById('dfHistorial').innerHTML = hist.map(h=>
-    swipeRow(`<div class="fila"><div class="nombre">${formatearFecha(h.fecha)}${h.tipo==='deuda'?'<small>Nueva compra fiada'+(h.nota?': '+h.nota:'')+'</small>':'<small>Pago recibido</small>'}</div><div class="monto ${h.tipo==='deuda'?'rojo':'verde'}">${h.tipo==='deuda'?'+':'-'}${euros(h.monto)}</div></div>`, `borrarMovimientoFiado('${h.id}')`)
+    swipeRow(`<div class="fila" onclick="editarMovimientoFiado('${h.id}')" style="cursor:pointer;"><div class="nombre">${formatearFecha(h.fecha)}${h.tipo==='deuda'?'<small>Nueva compra fiada'+(h.nota?': '+h.nota:'')+'</small>':'<small>Pago recibido</small>'}</div><div class="monto ${h.tipo==='deuda'?'rojo':'verde'}">${h.tipo==='deuda'?'+':'-'}${euros(h.monto)}</div></div>`, `borrarMovimientoFiado('${h.id}')`)
   ).join('');
   abrirOverlay('overlayDetalleFiado');
   activarDeslizables();
+}
+let movimientoFiadoEditandoId = null;
+function editarMovimientoFiado(movId){
+  const f = state.fiados.find(x=>x.id===fiadoActivoId);
+  if(!f) return;
+  const mov = (f.historial||[]).find(h=>h.id===movId);
+  if(!mov) return;
+  movimientoFiadoEditandoId = movId;
+  document.getElementById('emfMonto').value = mov.monto;
+  document.getElementById('emfFecha').value = mov.fecha;
+  document.getElementById('emfTipoTexto').textContent = mov.tipo==='deuda' ? 'Nueva compra fiada' : 'Pago recibido';
+  cerrarOverlay('overlayDetalleFiado');
+  abrirOverlay('overlayEditarMovimientoFiado');
+}
+function guardarEdicionMovimientoFiado(){
+  const nuevoMonto = Number(document.getElementById('emfMonto').value);
+  const nuevaFecha = document.getElementById('emfFecha').value;
+  if(!nuevoMonto || nuevoMonto<=0 || !nuevaFecha){ alert('Indica importe y fecha válidos.'); return; }
+  const f = state.fiados.find(x=>x.id===fiadoActivoId);
+  const mov = f && (f.historial||[]).find(h=>h.id===movimientoFiadoEditandoId);
+  if(f && mov){
+    if(mov.tipo==='deuda'){ f.monto = Math.max(0, Number(f.monto) - Number(mov.monto) + nuevoMonto); }
+    else { f.monto = Math.max(0, Number(f.monto) + Number(mov.monto) - nuevoMonto); }
+    mov.monto = nuevoMonto;
+    mov.fecha = nuevaFecha;
+  }
+  guardarEnNube();
+  cerrarOverlay('overlayEditarMovimientoFiado');
+  abrirDetalleFiado(fiadoActivoId);
+  render();
 }
 function borrarMovimientoFiado(movId){
   const f = state.fiados.find(x=>x.id===fiadoActivoId);
@@ -2581,7 +2684,7 @@ function abrirAumentoDeuda(){
   const f = state.fiados.find(x=>x.id===fiadoActivoId);
   document.getElementById('adNombreCliente').textContent = f.cliente;
   document.getElementById('adMonto').value = '';
-  document.getElementById('adFecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('adFecha').value = fechaHoyISO();
   document.getElementById('adNota').value = '';
   cerrarOverlay('overlayDetalleFiado');
   abrirOverlay('overlayAumentoDeuda');
@@ -2621,11 +2724,11 @@ function guardarPagoFiado(){
   if(f){
     f.monto = Math.max(0, f.monto - monto);
     f.historial = f.historial || [];
-    f.historial.push({id:cid(), fecha: new Date().toISOString().slice(0,10), monto, tipo:'pago'});
+    f.historial.push({id:cid(), fecha: fechaHoyISO(), monto, tipo:'pago'});
     if(sumarIngreso){
       const desglose = {efectivo:0, tarjeta:0, bizum:0};
       desglose[metodo] = monto;
-      state.ingresos.push({id:cid(), fecha:new Date().toISOString().slice(0,10), monto, nota:'Cobro fiado: '+f.cliente, desglose});
+      state.ingresos.push({id:cid(), fecha:fechaHoyISO(), monto, nota:'Cobro fiado: '+f.cliente, desglose});
     }
   }
   guardarEnNube(); cerrarOverlay('overlayPagoFiado'); render();
@@ -2635,7 +2738,7 @@ function registrarPago(){
   const p = state.prestamoPersonal;
   if(p.saldo<=0){ alert('El préstamo ya está saldado. Puedes renovar el ciclo.'); return; }
   const hoy = new Date();
-  document.getElementById('rpFechaInput').value = hoy.toISOString().slice(0,10);
+  document.getElementById('rpFechaInput').value = fechaISO(hoy);
   document.getElementById('rpMontoInput').value = Math.min(p.cuotaDiaria, p.saldo).toFixed(2);
   document.getElementById('rpDomingoBloque').style.display = hoy.getDay()===0 ? 'block' : 'none';
   document.getElementById('rpSumarGasto').checked = false;
