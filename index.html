@@ -533,10 +533,13 @@
       <button class="icon-btn" style="font-size:1.4rem;" onclick="cerrarOverlay('overlayGraficos')">✕</button>
     </div>
 
+    <label style="font-size:0.75rem; color:var(--tinta-suave); margin:10px 0 4px 0; display:block;">Mes a consultar</label>
+    <input type="month" id="graficoMesInput" onchange="renderGraficoElegido()" style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta);">
+
     <select id="tipoGrafico" onchange="renderGraficoElegido()" style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin:12px 0;">
       <option value="mensual">Ingresos vs gastos (últimos 6 meses)</option>
-      <option value="categoria">Gastos por categoría (este mes)</option>
-      <option value="fijovariable">Fijos vs variables (este mes)</option>
+      <option value="categoria">Gastos por categoría (mes elegido)</option>
+      <option value="fijovariable">Fijos vs variables (mes elegido)</option>
       <option value="efectivotarjeta">Efectivo vs Tarjeta</option>
     </select>
 
@@ -1678,21 +1681,23 @@ function guardarPagoFactura(){
 
 function abrirGraficos(){
   cerrarOverlay('overlayAjustes');
+  document.getElementById('graficoMesInput').value = selectedMonth;
   abrirOverlay('overlayGraficos');
   renderGraficoElegido();
 }
 
 function renderGraficoElegido(){
   const tipo = document.getElementById('tipoGrafico').value;
+  const mes = document.getElementById('graficoMesInput').value || selectedMonth;
   const cont = document.getElementById('contenidoGrafico');
-  if(tipo==='mensual') cont.innerHTML = graficoHtmlMensual();
-  else if(tipo==='categoria') cont.innerHTML = graficoHtmlCategoria();
-  else if(tipo==='fijovariable') cont.innerHTML = graficoHtmlFijoVariable();
-  else if(tipo==='efectivotarjeta') cont.innerHTML = graficoHtmlEfectivoTarjeta();
+  if(tipo==='mensual') cont.innerHTML = graficoHtmlMensual(mes);
+  else if(tipo==='categoria') cont.innerHTML = graficoHtmlCategoria(mes);
+  else if(tipo==='fijovariable') cont.innerHTML = graficoHtmlFijoVariable(mes);
+  else if(tipo==='efectivotarjeta') cont.innerHTML = graficoHtmlEfectivoTarjeta(mes);
 }
 
-function graficoHtmlMensual(){
-  const base = new Date(selectedMonth+'-01');
+function graficoHtmlMensual(mesElegido){
+  const base = new Date((mesElegido||selectedMonth)+'-01');
   let maxVal = 1;
   const meses = [];
   for(let i=5;i>=0;i--){
@@ -1719,13 +1724,14 @@ function graficoHtmlMensual(){
     </div>`;
 }
 
-function graficoHtmlCategoria(){
-  const vars = filtrarPorMes(state.gastosVariables,'fecha');
+function graficoHtmlCategoria(mesElegido){
+  const mes = mesElegido||selectedMonth;
+  const vars = state.gastosVariables.filter(x=>(x.fecha||'').slice(0,7)===mes);
   const porCategoria = {};
   vars.forEach(g => { porCategoria[g.categoria] = (porCategoria[g.categoria]||0) + Number(g.monto); });
   const entradas = Object.entries(porCategoria).sort((a,b)=>b[1]-a[1]);
   const maxCat = Math.max(1, ...entradas.map(e=>e[1]));
-  if(!entradas.length) return '<div class="empty">Sin gastos este mes.</div>';
+  if(!entradas.length) return '<div class="empty">Sin gastos ese mes.</div>';
   return entradas.map(([cat, val])=>`
     <div style="margin-bottom:10px;">
       <div style="display:flex; justify-content:space-between; font-family:'Segoe UI',sans-serif; font-size:0.82rem; margin-bottom:3px;">
@@ -1738,9 +1744,10 @@ function graficoHtmlCategoria(){
   `).join('');
 }
 
-function graficoHtmlFijoVariable(){
-  const totalFijos = totalFijosMensual();
-  const totalVars = totalVariablesMes();
+function graficoHtmlFijoVariable(mesElegido){
+  const mes = mesElegido||selectedMonth;
+  const totalFijos = totalFijosMensual(mes);
+  const totalVars = state.gastosVariables.filter(x=>(x.fecha||'').slice(0,7)===mes).reduce((s,g)=>s+Number(g.monto),0);
   const totalAmbos = Math.max(1, totalFijos+totalVars);
   return `
     <div style="display:flex; height:26px; border-radius:8px; overflow:hidden; margin-bottom:8px;">
@@ -1754,14 +1761,17 @@ function graficoHtmlFijoVariable(){
   `;
 }
 
-function graficoHtmlEfectivoTarjeta(){
+function graficoHtmlEfectivoTarjeta(mesElegido){
+  const mes = mesElegido||selectedMonth;
   const efectivoTotal = state.ingresos.reduce((s,x)=>s+Number(x.desglose?.efectivo||0),0);
   const tarjetaTotal = state.ingresos.reduce((s,x)=>s+Number(x.desglose?.tarjeta||0),0);
-  const delMes = filtrarPorMes(state.ingresos,'fecha');
+  const delMes = state.ingresos.filter(x=>(x.fecha||'').slice(0,7)===mes);
   const efectivoMes = delMes.reduce((s,x)=>s+Number(x.desglose?.efectivo||0),0);
   const tarjetaMes = delMes.reduce((s,x)=>s+Number(x.desglose?.tarjeta||0),0);
   const maxHist = Math.max(1, efectivoTotal, tarjetaTotal);
   const maxMes = Math.max(1, efectivoMes, tarjetaMes);
+  const [y,m] = mes.split('-').map(Number);
+  const etiquetaMes = MESES[m-1] + ' ' + y;
   return `
     <div style="font-family:'Segoe UI',sans-serif; font-size:0.82rem; font-weight:700; margin-bottom:6px;">Histórico total</div>
     <div style="margin-bottom:4px; display:flex; justify-content:space-between; font-family:'Segoe UI',sans-serif; font-size:0.8rem;"><span>Efectivo</span><span>${euros(efectivoTotal)}</span></div>
@@ -1769,7 +1779,7 @@ function graficoHtmlEfectivoTarjeta(){
     <div style="margin-bottom:4px; display:flex; justify-content:space-between; font-family:'Segoe UI',sans-serif; font-size:0.8rem;"><span>Tarjeta</span><span>${euros(tarjetaTotal)}</span></div>
     <div style="background:var(--crema-osc); border-radius:6px; height:9px; overflow:hidden; margin-bottom:16px;"><div style="background:var(--papaya); height:100%; width:${(tarjetaTotal/maxHist)*100}%;"></div></div>
 
-    <div style="font-family:'Segoe UI',sans-serif; font-size:0.82rem; font-weight:700; margin-bottom:6px;">Este mes</div>
+    <div style="font-family:'Segoe UI',sans-serif; font-size:0.82rem; font-weight:700; margin-bottom:6px; text-transform:capitalize;">${etiquetaMes}</div>
     <div style="margin-bottom:4px; display:flex; justify-content:space-between; font-family:'Segoe UI',sans-serif; font-size:0.8rem;"><span>Efectivo</span><span>${euros(efectivoMes)}</span></div>
     <div style="background:var(--crema-osc); border-radius:6px; height:9px; overflow:hidden; margin-bottom:8px;"><div style="background:var(--verde-claro); height:100%; width:${(efectivoMes/maxMes)*100}%;"></div></div>
     <div style="margin-bottom:4px; display:flex; justify-content:space-between; font-family:'Segoe UI',sans-serif; font-size:0.8rem;"><span>Tarjeta</span><span>${euros(tarjetaMes)}</span></div>
