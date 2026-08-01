@@ -136,6 +136,10 @@
   .swipe-content{ position:relative; background:var(--superficie); touch-action:pan-y; }
   .swipe-content .fila{ background:var(--superficie); }
   .fila:last-child{ border-bottom:none; }
+  .panel-filtro{ display:none; position:absolute; right:0; top:48px; background:var(--superficie); border:1px solid var(--borde); border-radius:12px; box-shadow:var(--sombra); z-index:25; width:250px; padding:6px; max-height:340px; overflow-y:auto; }
+  .filtro-opcion{ display:block; width:100%; text-align:left; padding:9px 10px; background:none; border:none; font-family:'Segoe UI',sans-serif; font-size:0.85rem; cursor:pointer; border-radius:7px; color:var(--tinta); }
+  .filtro-opcion.activo{ background:var(--crema-osc); font-weight:700; }
+  .buscar-fila{ position:relative; display:flex; gap:8px; }
   .fila .nombre{ flex:1; }
   .fila .nombre small{ display:block; color:var(--tinta-suave); font-size:0.72rem; }
   .fila .monto{ font-weight:700; white-space:nowrap; }
@@ -361,18 +365,18 @@
       <h2 onclick="toggleSeccion('sec-fiados')" style="cursor:pointer; user-select:none;">Cuentas pendientes (fiado) <span class="chev" id="chev-sec-fiados" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
       <div class="total-linea" style="margin-top:0; padding-top:0; border-top:none;"><span>Total pendiente</span><span id="totalFiados">0€</span></div>
       <div id="sec-fiados" class="collapsible-content" style="margin-top:10px;">
-        <div style="display:flex; gap:8px;">
+        <div class="buscar-fila">
           <input type="text" id="buscarFiado" placeholder="🔎 Buscar cliente..." oninput="renderFiados()"
             style="flex:1; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta);">
-          <button class="icon-btn" style="font-size:1.2rem; border:1px solid var(--borde); border-radius:9px; width:44px; background:var(--crema);" onclick="toggleFiltroPanel('filtroFiado')">🔽</button>
+          <button class="icon-btn" style="font-size:1.2rem; border:1px solid var(--borde); border-radius:9px; width:44px; background:var(--crema);" onclick="toggleFiltroPanel('panelFiltroFiado')">🔽</button>
+          <div class="panel-filtro" id="panelFiltroFiado">
+            <button class="filtro-opcion" data-val="deuda_desc" onclick="elegirFiltroFiado('deuda_desc')">Mayor a menor deuda</button>
+            <button class="filtro-opcion" data-val="deuda_asc" onclick="elegirFiltroFiado('deuda_asc')">Menor a mayor deuda</button>
+            <button class="filtro-opcion" data-val="sin_pagar" onclick="elegirFiltroFiado('sin_pagar')">Más tiempo sin pagar primero</button>
+            <button class="filtro-opcion" data-val="pagando" onclick="elegirFiltroFiado('pagando')">Han pagado más recientemente primero</button>
+            <button class="filtro-opcion" data-val="az" onclick="elegirFiltroFiado('az')">Alfabético (A-Z)</button>
+          </div>
         </div>
-        <select id="filtroFiado" onchange="renderFiados()" style="display:none; width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-top:8px;">
-          <option value="deuda_desc">Mayor a menor deuda</option>
-          <option value="deuda_asc">Menor a mayor deuda</option>
-          <option value="sin_pagar">Más tiempo sin pagar primero</option>
-          <option value="pagando">Han pagado más recientemente primero</option>
-          <option value="az">Alfabético (A-Z)</option>
-        </select>
         <div id="listaFiados" style="margin-top:10px;"></div>
       </div>
     </div>
@@ -431,28 +435,24 @@
         <h2 style="margin:0;">Productos</h2>
         <span class="badge" id="contadorProductos">0</span>
       </div>
-      <div style="display:flex; gap:8px; margin-top:10px;">
+      <div class="buscar-fila" style="margin-top:10px;">
         <input type="text" id="buscarCaducidad" placeholder="🔎 Buscar producto..." oninput="renderStock()"
           style="flex:1; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta);">
-        <button class="icon-btn" style="font-size:1.2rem; border:1px solid var(--borde); border-radius:9px; width:44px; background:var(--crema);" onclick="toggleFiltroPanel('filtroCaducidad')">🔽</button>
+        <button class="icon-btn" style="font-size:1.2rem; border:1px solid var(--borde); border-radius:9px; width:44px; background:var(--crema);" onclick="toggleFiltroPanel('panelFiltroCaducidad')">🔽</button>
+        <div class="panel-filtro" id="panelFiltroCaducidad">
+          <button class="filtro-opcion" data-val="proximos" onclick="elegirFiltroCaducidad('proximos')">Más próximos a caducar primero</button>
+          <button class="filtro-opcion" data-val="lejanos" onclick="elegirFiltroCaducidad('lejanos')">Más lejanos primero</button>
+          <button class="filtro-opcion" data-val="az" onclick="elegirFiltroCaducidad('az')">Alfabético (A-Z)</button>
+          <button class="filtro-opcion" data-val="urgente" onclick="elegirFiltroCaducidad('urgente')">Solo urgentes (3 días o menos)</button>
+          <button class="filtro-opcion" data-val="semana" onclick="elegirFiltroCaducidad('semana')">Caducan esta semana</button>
+          <button class="filtro-opcion" data-val="caducados" onclick="elegirFiltroCaducidad('caducados')">Ya caducados</button>
+          <button class="filtro-opcion" data-val="retirados" onclick="elegirFiltroCaducidad('retirados')">Solo retirados</button>
+          <button class="filtro-opcion" data-val="renovados" onclick="elegirFiltroCaducidad('renovados')">Solo renovados</button>
+          <button class="filtro-opcion" data-val="sin_renovar" onclick="elegirFiltroCaducidad('sin_renovar')">Sin renovar hace más de 1 año</button>
+        </div>
       </div>
-      <select id="filtroCaducidad" onchange="renderStock()" style="display:none; width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-top:8px;">
-        <option value="proximos">Más próximos a caducar primero</option>
-        <option value="lejanos">Más lejanos primero</option>
-        <option value="az">Alfabético (A-Z)</option>
-        <option value="urgente">Solo urgentes (3 días o menos)</option>
-        <option value="semana">Caducan esta semana (7 días o menos)</option>
-        <option value="caducados">Ya caducados</option>
-        <option value="retirados">Solo retirados</option>
-        <option value="renovados">Solo renovados</option>
-      </select>
       <div id="listaFamiliasProductos" style="margin-top:12px;"></div>
       <div class="empty" id="emptyCaducidades" style="display:none;">Aún no hay productos con caducidad apuntados.</div>
-    </div>
-    <div class="card">
-      <h2>Gestionar familias</h2>
-      <div id="listaFamilias"></div>
-      <button class="btn secundario" style="margin-top:10px;" onclick="abrirFormFamilia()">+ Añadir familia</button>
     </div>
   </section>
 
@@ -860,7 +860,11 @@
     <h3 id="cdTitulo">Producto con caducidad</h3>
     <label>Nombre</label><input type="text" id="cdNombre" placeholder="Ej. Leche Pascual">
     <label>Familia (opcional)</label>
-    <select id="cdFamilia"><option value="">Sin familia</option></select>
+    <select id="cdFamilia" onchange="onCambioFamiliaSelect(this)"><option value="">Sin familia</option></select>
+    <div id="cdFamiliaNuevaWrap" style="display:none; margin-top:6px;">
+      <input type="text" id="cdFamiliaNueva" placeholder="Nombre de la familia nueva">
+      <button type="button" class="btn secundario" style="margin-top:6px;" onclick="guardarFamiliaDesdeCaducidad()">Guardar familia</button>
+    </div>
     <label>Ubicación en la tienda (opcional)</label><input type="text" id="cdUbicacion" placeholder="Ej. nevera 2, estantería fondo">
     <label>Fechas de caducidad</label>
     <div id="cdFechasLista"></div>
@@ -1036,7 +1040,19 @@ function fechaISO(d){
 function fechaHoyISO(){ return fechaISO(new Date()); }
 function toggleFiltroPanel(id){
   const el = document.getElementById(id);
-  el.style.display = el.style.display==='none' ? 'block' : 'none';
+  el.style.display = el.style.display==='block' ? 'none' : 'block';
+}
+let filtroCaducidadValor = 'proximos';
+function elegirFiltroCaducidad(v){
+  filtroCaducidadValor = v;
+  document.getElementById('panelFiltroCaducidad').style.display = 'none';
+  renderStock();
+}
+let filtroFiadoValor = 'deuda_desc';
+function elegirFiltroFiado(v){
+  filtroFiadoValor = v;
+  document.getElementById('panelFiltroFiado').style.display = 'none';
+  renderFiados();
 }
 
 function swipeRow(innerHtml, deleteAction){
@@ -2086,7 +2102,8 @@ function diasSinPagar(f, hoy){
 }
 function renderFiados(){
   const q = (document.getElementById('buscarFiado').value || '').toLowerCase().trim();
-  const orden = document.getElementById('filtroFiado')?.value || 'deuda_desc';
+  const orden = filtroFiadoValor;
+  document.querySelectorAll('#panelFiltroFiado .filtro-opcion').forEach(b=>b.classList.toggle('activo', b.dataset.val===orden));
   const filtrados = q ? state.fiados.filter(f => f.cliente.toLowerCase().includes(q)) : [...state.fiados];
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   let ordenado = [...filtrados];
@@ -2258,7 +2275,8 @@ function guardarAjusteObjetivoAhorro(){
 
 function renderStock(){
   const q = (document.getElementById('buscarCaducidad')?.value || '').toLowerCase().trim();
-  const filtro = document.getElementById('filtroCaducidad')?.value || 'proximos';
+  const filtro = filtroCaducidadValor;
+  document.querySelectorAll('#panelFiltroCaducidad .filtro-opcion').forEach(b=>b.classList.toggle('activo', b.dataset.val===filtro));
   const hoy = new Date(); hoy.setHours(0,0,0,0);
 
   document.getElementById('contadorProductos').textContent = state.caducidades.length;
@@ -2275,6 +2293,15 @@ function renderStock(){
   if(filtro==='caducados') cads = cads.filter(c => c.diasMin<0 && !c.retirado);
   if(filtro==='retirados') cads = cads.filter(c => c.retirado);
   if(filtro==='renovados') cads = cads.filter(c => !!c.renovadoEn);
+  if(filtro==='sin_renovar'){
+    const haceUnAnio = new Date(); haceUnAnio.setFullYear(haceUnAnio.getFullYear()-1);
+    cads = cads.filter(c => {
+      if(c.retirado) return false;
+      const referencia = c.renovadoEn || c.creadoEn;
+      if(!referencia) return true; // productos antiguos sin fecha guardada: se consideran muy antiguos
+      return new Date(referencia+'T00:00:00') < haceUnAnio;
+    });
+  }
 
   document.getElementById('emptyCaducidades').style.display = cads.length? 'none':'block';
 
@@ -2299,9 +2326,16 @@ function renderStock(){
 
     const idFam = 'fam-productos-'+fam.replace(/[^a-zA-Z0-9]/g,'_');
     const filas = productos.map(c=>{
+      const fechasTexto = c.fechas.map(f=>formatearFecha(f)).join(' · ');
+      const ubicacionHtml = c.ubicacion ? `<div style="font-family:'Segoe UI',sans-serif; font-size:0.78rem; color:var(--tinta-suave); margin-top:2px;">📍 ${c.ubicacion}</div>` : '';
       if(c.retirado){
-        const fila = `<div class="card" style="padding:14px; margin:0; background:var(--crema-osc); opacity:0.6;" onclick="abrirFormCaducidad('${c.id}')">
-          <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.9rem; color:var(--tinta-suave);">🚫 ${c.nombre} <small>(retirado)</small></div>
+        const fila = `<div class="card" style="padding:12px; margin:0; background:#EDEBE6;" onclick="abrirFormCaducidad('${c.id}')">
+          <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem; color:#6b6b6b;">🚫 ${c.nombre}</div>
+          ${c.ubicacion ? `<div style="font-family:'Segoe UI',sans-serif; font-size:0.78rem; color:#8a8a8a; margin-top:2px;">📍 ${c.ubicacion}</div>` : ''}
+          <div style="font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.9rem; color:#6b6b6b; margin-top:6px; display:flex; align-items:center; gap:6px;">
+            <span style="width:10px; height:10px; border-radius:50%; background:#9a9a9a; display:inline-block;"></span>Retirado
+          </div>
+          <div style="font-family:'Segoe UI',sans-serif; font-size:0.72rem; color:#9a9a9a; margin-top:3px;">${fechasTexto}</div>
         </div>`;
         return swipeRow(fila, `borrarCaducidad('${c.id}')`);
       }
@@ -2309,11 +2343,13 @@ function renderStock(){
       const color = c.diasMin<3 ? 'var(--rojo)' : (c.diasMin<7 ? 'var(--papaya-oscuro)' : 'var(--verde-claro)');
       const textoGrande = c.diasMin<0 ? 'Caducó hace '+Math.abs(c.diasMin)+' '+plural(c.diasMin,'día','días') : (c.diasMin===0 ? 'Caduca hoy' : 'Caduca en '+c.diasMin+' '+plural(c.diasMin,'día','días'));
       const icono = c.devolucion ? '✅' : '☠️';
-      const fila = `<div class="card" style="padding:14px; margin:0;" onclick="abrirFormCaducidad('${c.id}')">
+      const fila = `<div class="card" style="padding:12px; margin:0;" onclick="abrirFormCaducidad('${c.id}')">
         <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem;">${icono} ${c.nombre}</div>
-        <div style="font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.95rem; color:${color}; margin-top:6px; display:flex; align-items:center; gap:6px;">
-          <span class="semaforo ${sem}"></span>⏰ ${textoGrande}
+        ${ubicacionHtml}
+        <div style="font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.9rem; color:${color}; margin-top:6px; display:flex; align-items:center; gap:6px;">
+          <span class="semaforo ${sem}"></span>${textoGrande}
         </div>
+        <div style="font-family:'Segoe UI',sans-serif; font-size:0.72rem; color:var(--tinta-suave); margin-top:3px;">${fechasTexto}</div>
       </div>`;
       return swipeRow(fila, `borrarCaducidad('${c.id}')`);
     }).join('');
@@ -2338,10 +2374,26 @@ function agregarCampoFecha(valor){
     <button type="button" class="icon-btn" onclick="this.parentElement.remove()">🗑️</button>`;
   cont.appendChild(row);
 }
+function onCambioFamiliaSelect(sel){
+  document.getElementById('cdFamiliaNuevaWrap').style.display = sel.value==='__nueva__' ? 'block' : 'none';
+  if(sel.value==='__nueva__') document.getElementById('cdFamiliaNueva').value='';
+}
+function guardarFamiliaDesdeCaducidad(){
+  const nombre = document.getElementById('cdFamiliaNueva').value.trim();
+  if(!nombre){ alert('Escribe el nombre de la familia.'); return; }
+  if(!state.familiasCaducidad.includes(nombre)) state.familiasCaducidad.push(nombre);
+  guardarEnNube();
+  const sel = document.getElementById('cdFamilia');
+  sel.innerHTML = '<option value="">Sin familia</option>' + state.familiasCaducidad.map(f=>`<option value="${f}">${f}</option>`).join('') + '<option value="__nueva__">+ Añadir familia nueva…</option>';
+  sel.value = nombre;
+  document.getElementById('cdFamiliaNuevaWrap').style.display='none';
+}
 function abrirFormCaducidad(id){
   caducidadEditandoId = id || null;
   const selFamilia = document.getElementById('cdFamilia');
-  selFamilia.innerHTML = '<option value="">Sin familia</option>' + state.familiasCaducidad.map(f=>`<option value="${f}">${f}</option>`).join('');
+  selFamilia.innerHTML = '<option value="">Sin familia</option>' + state.familiasCaducidad.map(f=>`<option value="${f}">${f}</option>`).join('') + '<option value="__nueva__">+ Añadir familia nueva…</option>';
+  document.getElementById('cdFamiliaNuevaWrap').style.display='none';
+  document.getElementById('cdFamiliaNueva').value='';
   document.getElementById('cdFechasLista').innerHTML = '';
   if(id){
     const c = state.caducidades.find(x=>x.id===id);
@@ -2384,7 +2436,8 @@ function marcarProductoRenovado(){
 }
 function guardarCaducidad(){
   const nombre = document.getElementById('cdNombre').value.trim();
-  const familia = document.getElementById('cdFamilia').value;
+  let familia = document.getElementById('cdFamilia').value;
+  if(familia==='__nueva__') familia = '';
   const ubicacion = document.getElementById('cdUbicacion').value.trim();
   const nota = document.getElementById('cdNota').value.trim();
   const devolucion = document.getElementById('cdDevolucion').checked;
@@ -2394,7 +2447,7 @@ function guardarCaducidad(){
     const c = state.caducidades.find(x=>x.id===caducidadEditandoId);
     if(c){ c.nombre=nombre; c.familia=familia; c.ubicacion=ubicacion; c.nota=nota; c.fechas=fechas; c.devolucion=devolucion; delete c.fecha; }
   } else {
-    state.caducidades.push({id:cid(), nombre, familia, ubicacion, nota, fechas, devolucion});
+    state.caducidades.push({id:cid(), nombre, familia, ubicacion, nota, fechas, devolucion, creadoEn: fechaHoyISO()});
   }
   guardarEnNube(); cerrarOverlay('overlayCaducidad'); caducidadEditandoId=null; render();
 }
@@ -2477,6 +2530,7 @@ function abrirFormGasto(id){
   const sel = document.getElementById('gProveedor');
   sel.innerHTML = '<option value="">Sin especificar</option>' + state.proveedores.map(p=>`<option value="${p}">${p}</option>`).join('') + '<option value="__nuevo__">+ Añadir proveedor nuevo…</option>';
   document.getElementById('gProveedorNuevoWrap').style.display='none';
+  document.getElementById('gProveedorNuevo').value='';
   document.getElementById('gEsFactura').checked = false;
   document.getElementById('gEsFactura').disabled = false;
   onCambioEsFactura(document.getElementById('gEsFactura'));
@@ -2504,7 +2558,9 @@ function onCambioEsFactura(chk){
   document.getElementById('gProveedorEtiquetaOpcional').style.display = chk.checked ? 'none' : 'inline';
 }
 function onCambioProveedorSelect(sel){
-  document.getElementById('gProveedorNuevoWrap').style.display = sel.value==='__nuevo__' ? 'block' : 'none';
+  const mostrar = sel.value==='__nuevo__';
+  document.getElementById('gProveedorNuevoWrap').style.display = mostrar ? 'block' : 'none';
+  if(mostrar) document.getElementById('gProveedorNuevo').value = '';
 }
 function guardarProveedorDesdeGasto(){
   const nombre = document.getElementById('gProveedorNuevo').value.trim();
