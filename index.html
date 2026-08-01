@@ -28,17 +28,6 @@
     --sombra: 0 6px 18px rgba(36,33,28,0.12);
     --radio: 16px;
   }
-  html[data-theme="dark"]{
-    --verde: #12291F;
-    --verde-claro: #1E4633;
-    --crema: #171613;
-    --crema-osc: #201E19;
-    --tinta: #F3EEDF;
-    --tinta-suave: #B9B2A0;
-    --borde: #362F24;
-    --superficie: #221F1A;
-    --sombra: 0 6px 18px rgba(0,0,0,0.4);
-  }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -259,7 +248,6 @@
     <div style="display:flex; gap:8px;">
       <button class="theme-toggle" onclick="abrirArqueo()">🧮</button>
       <button class="theme-toggle" onclick="abrirChecklist()">✅</button>
-      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙</button>
       <button class="theme-toggle" onclick="abrirAjustes()">⚙️</button>
     </div>
   </div>
@@ -359,7 +347,7 @@
         <div style="margin-top:12px;">
           <label class="btn secundario" style="display:block; text-align:center; cursor:pointer;">
             📷 Adjuntar foto del tiquet
-            <input type="file" accept="image/*" capture="environment" id="fotoTiqueInput" style="display:none;" onchange="subirFotoTique(this)">
+            <input type="file" accept="image/*" id="fotoTiqueInput" style="display:none;" onchange="subirFotoTique(this)">
           </label>
           <div id="fotoTiquePreview" style="margin-top:8px;"></div>
         </div>
@@ -372,17 +360,25 @@
     <div class="card">
       <h2 onclick="toggleSeccion('sec-fiados')" style="cursor:pointer; user-select:none;">Cuentas pendientes (fiado) <span class="chev" id="chev-sec-fiados" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
       <div class="total-linea" style="margin-top:0; padding-top:0; border-top:none;"><span>Total pendiente</span><span id="totalFiados">0€</span></div>
-      <button class="btn btn-sticky" style="margin:10px 0 12px 0;" onclick="abrirFormFiado()">+ Añadir cliente</button>
-      <div id="sec-fiados" class="collapsible-content">
+      <div id="sec-fiados" class="collapsible-content" style="margin-top:10px;">
         <input type="text" id="buscarFiado" placeholder="🔎 Buscar cliente..." oninput="renderFiados()"
-          style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-bottom:10px;">
+          style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-bottom:8px;">
+        <select id="filtroFiado" onchange="renderFiados()" style="width:100%; padding:10px; border:1px solid var(--borde); border-radius:9px; font-family:'Segoe UI',sans-serif; font-size:0.9rem; background:var(--crema); color:var(--tinta); margin-bottom:10px;">
+          <option value="deuda_desc">Mayor a menor deuda</option>
+          <option value="deuda_asc">Menor a mayor deuda</option>
+          <option value="sin_pagar">Más tiempo sin pagar primero</option>
+          <option value="pagando">Han pagado más recientemente primero</option>
+          <option value="az">Alfabético (A-Z)</option>
+        </select>
         <div id="listaFiados"></div>
       </div>
     </div>
     <div class="card">
-      <h2>Resumen por día</h2>
-      <div id="listaDiasFiado"></div>
-      <div class="empty" id="emptyDiasFiado" style="display:none;">Aún no hay movimientos de fiado registrados.</div>
+      <h2 onclick="toggleSeccion('sec-fiados-dias')" style="cursor:pointer; user-select:none;">Resumen por día <span class="chev" id="chev-sec-fiados-dias" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
+      <div id="sec-fiados-dias" class="collapsible-content">
+        <div id="listaDiasFiado"></div>
+        <div class="empty" id="emptyDiasFiado" style="display:none;">Aún no hay movimientos de fiado registrados.</div>
+      </div>
     </div>
   </section>
 
@@ -394,13 +390,10 @@
         <div class="kpi info"><div class="label">Prestado</div><div class="valor" id="prestInicial">500€</div></div>
         <div class="kpi neg"><div class="label">Saldo pendiente</div><div class="valor" id="prestSaldo">500€</div></div>
       </div>
-      <div class="empty" style="padding-top:0;">Ciclo: hasta 30€/día de lunes a sábado (domingo descanso), importe ajustable. <span id="prestFechaFin"></span></div>
+      <div class="empty" style="padding-top:0;" id="prestFechaFin"></div>
       <button class="btn" onclick="registrarPago()">Registrar pago</button>
       <button class="btn secundario" style="margin-top:8px;" onclick="renovarCiclo()">Renovar ciclo (nuevo préstamo de 500€)</button>
-      <button class="btn secundario" style="margin-top:8px;" onclick="toggleSeccion('sec-prest-mas')">⋯ Más opciones</button>
-      <div id="sec-prest-mas" class="collapsible-content" style="display:none; margin-top:8px;">
-        <button class="btn secundario" onclick="abrirAjusteSaldo()">Ajustar saldo manualmente</button>
-      </div>
+      <button class="btn secundario" style="margin-top:8px;" onclick="abrirAjusteSaldo()">Ajustar saldo manualmente</button>
       <h2 onclick="toggleSeccion('sec-prest-historial')" style="cursor:pointer; user-select:none; margin-top:18px;">Historial de pagos <span class="chev" id="chev-sec-prest-historial" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
       <div id="sec-prest-historial" class="collapsible-content">
         <div id="listaPagosPrestamo"></div>
@@ -420,9 +413,11 @@
       <button class="btn" onclick="abrirAportacionAhorro()">+ Añadir aportación de hoy</button>
       <button class="btn secundario" style="margin-top:8px;" onclick="marcarAlquilerPagado()">Marcar alquiler pagado</button>
       <button class="btn secundario" style="margin-top:8px;" onclick="abrirAjusteObjetivoAhorro()">Ajustar objetivo / ahorro manualmente</button>
-      <h2 style="margin-top:18px;">Historial de aportaciones</h2>
-      <div id="listaAportacionesAhorro"></div>
-      <div class="empty" id="emptyAhorro" style="display:none;">Todavía no hay aportaciones registradas.</div>
+      <h2 onclick="toggleSeccion('sec-ahorro-historial')" style="cursor:pointer; user-select:none; margin-top:18px;">Historial de aportaciones <span class="chev" id="chev-sec-ahorro-historial" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
+      <div id="sec-ahorro-historial" class="collapsible-content">
+        <div id="listaAportacionesAhorro"></div>
+        <div class="empty" id="emptyAhorro" style="display:none;">Todavía no hay aportaciones registradas.</div>
+      </div>
     </div>
   </section>
 
@@ -1189,7 +1184,6 @@ function iniciarApp(){
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('appRoot').style.display = 'block';
 
-  aplicarTemaGuardado();
   aplicarSeccionesColapsadas();
 
   docRef.onSnapshot((snap) => {
@@ -1250,22 +1244,6 @@ async function guardarEnNube(){
   }
 }
 
-function toggleTheme(){
-  const html = document.documentElement;
-  const actual = html.getAttribute('data-theme');
-  const nuevo = actual === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', nuevo);
-  localStorage.setItem('anahy-theme', nuevo);
-  document.getElementById('themeBtn').textContent = nuevo === 'dark' ? '☀️' : '🌙';
-}
-function aplicarTemaGuardado(){
-  const guardado = localStorage.getItem('anahy-theme');
-  if(guardado === 'dark'){
-    document.documentElement.setAttribute('data-theme','dark');
-    document.getElementById('themeBtn').textContent = '☀️';
-  }
-}
-
 function cambiarTab(tab){
   activeTab = tab;
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
@@ -1280,6 +1258,8 @@ function actualizarFabAgregar(){
     fab.style.display='block'; fab.textContent='+ Añadir gasto'; fab.onclick=()=>abrirFormGasto();
   } else if(activeTab==='ingresos'){
     fab.style.display='block'; fab.textContent='+ Añadir ingreso del día'; fab.onclick=()=>abrirFormIngreso();
+  } else if(activeTab==='fiados'){
+    fab.style.display='block'; fab.textContent='+ Añadir cliente'; fab.onclick=()=>abrirFormFiado();
   } else {
     fab.style.display='none';
   }
@@ -2006,20 +1986,24 @@ function renderResumenDia(){
   renderFotoTique(fecha);
 }
 
+const fotosCache = {};
 function renderFotoTique(fecha){
   const cont = document.getElementById('fotoTiquePreview');
-  const foto = state.fotosResumenDia && state.fotosResumenDia[fecha];
-  if(foto){
-    cont.innerHTML = `<div style="position:relative; display:inline-block;">
-      <img src="${foto}" style="max-width:100%; border-radius:10px; border:1px solid var(--borde); cursor:pointer;" onclick="abrirFotoZoom('${fecha}')">
-      <button class="icon-btn" style="position:absolute; top:4px; right:4px; background:rgba(255,255,255,0.85); border-radius:50%;" onclick="borrarFotoTique('${fecha}')">🗑️</button>
-    </div>`;
-  } else {
-    cont.innerHTML = '';
-  }
+  cont.innerHTML = '<div class="empty" style="padding:8px 0;">Cargando foto...</div>';
+  db.collection('anahyFotos').doc(fecha).get().then(snap=>{
+    if(snap.exists && snap.data().foto){
+      fotosCache[fecha] = snap.data().foto;
+      cont.innerHTML = `<div style="position:relative; display:inline-block;">
+        <img src="${snap.data().foto}" style="max-width:100%; border-radius:10px; border:1px solid var(--borde); cursor:pointer;" onclick="abrirFotoZoom('${fecha}')">
+        <button class="icon-btn" style="position:absolute; top:4px; right:4px; background:rgba(255,255,255,0.85); border-radius:50%;" onclick="borrarFotoTique('${fecha}')">🗑️</button>
+      </div>`;
+    } else {
+      cont.innerHTML = '';
+    }
+  }).catch(()=>{ cont.innerHTML = ''; });
 }
 function abrirFotoZoom(fecha){
-  const foto = state.fotosResumenDia && state.fotosResumenDia[fecha];
+  const foto = fotosCache[fecha];
   if(!foto) return;
   document.getElementById('imgZoomFoto').src = foto;
   abrirOverlay('overlayFotoZoom');
@@ -2027,29 +2011,27 @@ function abrirFotoZoom(fecha){
 function subirFotoTique(input){
   const fecha = document.getElementById('diaResumenFecha').value;
   if(!fecha || !input.files || !input.files[0]) return;
+  const cont = document.getElementById('fotoTiquePreview');
+  cont.innerHTML = '<div class="empty" style="padding:8px 0;">Subiendo foto...</div>';
   const reader = new FileReader();
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
-      const maxAncho = 620;
+      const maxAncho = 700;
       const escala = Math.min(1, maxAncho / img.width);
       const canvas = document.createElement('canvas');
       canvas.width = img.width * escala;
       canvas.height = img.height * escala;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.45);
-      if(!state.fotosResumenDia) state.fotosResumenDia = {};
-      const anterior = state.fotosResumenDia[fecha];
-      state.fotosResumenDia[fecha] = dataUrl;
-      renderFotoTique(fecha);
-      guardarEnNube().then(ok=>{
-        if(!ok){
-          alert('No se pudo guardar la foto (puede que esté ocupando demasiado espacio). Prueba con una foto más pequeña o inténtalo de nuevo con mejor conexión.');
-          state.fotosResumenDia[fecha] = anterior;
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+      db.collection('anahyFotos').doc(fecha).set({ foto: dataUrl, actualizado: new Date().toISOString() })
+        .then(()=>{ fotosCache[fecha]=dataUrl; renderFotoTique(fecha); })
+        .catch((err)=>{
+          console.error(err);
+          alert('No se pudo guardar la foto. Comprueba tu conexión e inténtalo de nuevo.');
           renderFotoTique(fecha);
-        }
-      });
+        });
     };
     img.src = e.target.result;
   };
@@ -2058,21 +2040,29 @@ function subirFotoTique(input){
 }
 function borrarFotoTique(fecha){
   if(!confirmarBorradoDoble('¿Eliminar la foto del tiquet de este día?')) return;
-  if(state.fotosResumenDia) delete state.fotosResumenDia[fecha];
-  guardarEnNube();
-  renderFotoTique(fecha);
+  db.collection('anahyFotos').doc(fecha).delete().then(()=>{ delete fotosCache[fecha]; renderFotoTique(fecha); });
 }
 
+function diasSinPagar(f, hoy){
+  const pagos = (f.historial||[]).filter(h=>h.tipo==='pago').sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  if(!pagos.length) return Infinity;
+  return Math.round((hoy - new Date(pagos[0].fecha+'T00:00:00'))/(1000*60*60*24));
+}
 function renderFiados(){
   const q = (document.getElementById('buscarFiado').value || '').toLowerCase().trim();
-  const filtrados = q ? state.fiados.filter(f => f.cliente.toLowerCase().includes(q)) : state.fiados;
-  const ordenado = [...filtrados].sort((a,b)=>b.monto-a.monto);
-  const lf = document.getElementById('listaFiados');
+  const orden = document.getElementById('filtroFiado')?.value || 'deuda_desc';
+  const filtrados = q ? state.fiados.filter(f => f.cliente.toLowerCase().includes(q)) : [...state.fiados];
   const hoy = new Date(); hoy.setHours(0,0,0,0);
+  let ordenado = [...filtrados];
+  if(orden==='deuda_desc') ordenado.sort((a,b)=>b.monto-a.monto);
+  else if(orden==='deuda_asc') ordenado.sort((a,b)=>a.monto-b.monto);
+  else if(orden==='sin_pagar') ordenado.sort((a,b)=>diasSinPagar(b,hoy)-diasSinPagar(a,hoy));
+  else if(orden==='pagando') ordenado.sort((a,b)=>diasSinPagar(a,hoy)-diasSinPagar(b,hoy));
+  else if(orden==='az') ordenado.sort((a,b)=>a.cliente.localeCompare(b.cliente));
+  const lf = document.getElementById('listaFiados');
   if(!ordenado.length){ lf.innerHTML = '<div class="empty">'+(q? 'Ningún cliente coincide con "'+q+'".' : 'No hay clientes con fiado registrados.')+'</div>'; }
   else{
     lf.innerHTML = ordenado.map(f=>{
-      const sem = f.monto>1000?'rojo':(f.monto>300?'amarillo':'verde');
       const pagos = (f.historial||[]).filter(h=>h.tipo==='pago').sort((a,b)=>b.fecha.localeCompare(a.fecha));
       let etiquetaPago = '';
       if(f.monto>0){
@@ -2086,7 +2076,7 @@ function renderFiados(){
         }
       }
       const fila = `<div class="fila">
-        <div class="nombre" onclick="abrirDetalleFiado('${f.id}')" style="cursor:pointer;"><span class="semaforo ${sem}"></span>${f.cliente}<small>${etiquetaPago}</small></div>
+        <div class="nombre" onclick="abrirDetalleFiado('${f.id}')" style="cursor:pointer;">${f.cliente}<small>${etiquetaPago}</small></div>
         <div class="monto rojo">${euros(f.monto)}</div>
       </div>`;
       return swipeRow(fila, `borrarFiado('${f.id}')`);
@@ -2165,22 +2155,45 @@ function renderAhorro(){
   document.getElementById('ahorroObjetivoBox').className = 'kpi ' + (listo ? 'pos' : 'info');
   const aportaciones = [...(a.aportaciones||[])].sort((x,y)=> y.fecha.localeCompare(x.fecha));
   document.getElementById('emptyAhorro').style.display = aportaciones.length? 'none':'block';
-  document.getElementById('listaAportacionesAhorro').innerHTML = aportaciones.map(x=>`
-    <div class="fila"><div class="nombre">${formatearFecha(x.fecha)}</div><div class="monto verde">${euros(x.monto)}</div></div>
-  `).join('');
+  document.getElementById('listaAportacionesAhorro').innerHTML = aportaciones.map(x=>
+    swipeRow(`<div class="fila" onclick="editarAportacionAhorro('${x.id}')" style="cursor:pointer;"><div class="nombre">${formatearFecha(x.fecha)}</div><div class="monto verde">${euros(x.monto)}</div></div>`, `borrarAportacionAhorro('${x.id}')`)
+  ).join('');
 }
+let aportacionAhorroEditandoId = null;
 function abrirAportacionAhorro(){
+  aportacionAhorroEditandoId = null;
   document.getElementById('aaMonto').value = '';
   abrirOverlay('overlayAportacionAhorro');
+}
+function editarAportacionAhorro(id){
+  const a = state.ahorroAlquiler;
+  const ap = (a.aportaciones||[]).find(x=>x.id===id);
+  if(!ap) return;
+  aportacionAhorroEditandoId = id;
+  document.getElementById('aaMonto').value = ap.monto;
+  abrirOverlay('overlayAportacionAhorro');
+}
+function borrarAportacionAhorro(id){
+  const a = state.ahorroAlquiler;
+  const ap = (a.aportaciones||[]).find(x=>x.id===id);
+  if(!ap) return;
+  a.ahorrado = Math.max(0, Number(a.ahorrado) - Number(ap.monto));
+  a.aportaciones = a.aportaciones.filter(x=>x.id!==id);
+  guardarEnNube(); render();
 }
 function guardarAportacionAhorro(){
   const monto = Number(document.getElementById('aaMonto').value);
   if(!monto || monto<=0){ alert('Indica un importe válido.'); return; }
   const a = state.ahorroAlquiler;
-  a.ahorrado = Number(a.ahorrado) + monto;
   if(!a.aportaciones) a.aportaciones = [];
-  a.aportaciones.push({fecha: new Date().toISOString().slice(0,10), monto});
-  guardarEnNube(); cerrarOverlay('overlayAportacionAhorro'); render();
+  if(aportacionAhorroEditandoId){
+    const ap = a.aportaciones.find(x=>x.id===aportacionAhorroEditandoId);
+    if(ap){ a.ahorrado = Number(a.ahorrado) - Number(ap.monto) + monto; ap.monto = monto; }
+  } else {
+    a.ahorrado = Number(a.ahorrado) + monto;
+    a.aportaciones.push({id:cid(), fecha: new Date().toISOString().slice(0,10), monto});
+  }
+  guardarEnNube(); cerrarOverlay('overlayAportacionAhorro'); aportacionAhorroEditandoId=null; render();
 }
 function marcarAlquilerPagado(){
   const a = state.ahorroAlquiler;
