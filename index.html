@@ -512,8 +512,12 @@
     <h3 id="pfacTitulo">Registrar pago de factura</h3>
     <label>Fecha del pago</label>
     <input type="date" id="pfacFecha">
-    <label>Importe pagado (€)</label>
-    <input type="number" step="0.01" id="pfacMonto" placeholder="0.00">
+    <label>De dinero acumulado (€)</label>
+    <input type="number" step="0.01" id="pfacAcumulado" placeholder="0.00" oninput="calcularTotalPagoFactura()">
+    <label>De caja del día (€)</label>
+    <input type="number" step="0.01" id="pfacCaja" placeholder="0.00" oninput="calcularTotalPagoFactura()">
+    <p style="font-size:0.74rem; color:var(--tinta-suave); margin-top:4px;">Rellena una casilla, la otra, o las dos si el pago sale de los dos sitios. Lo que pongas en "caja del día" se descontará del resumen de caja de ese día; lo acumulado no.</p>
+    <div class="total-linea"><span>Total del pago</span><span id="pfacTotal">0,00€</span></div>
     <label>Pagado en</label>
     <select id="pfacMetodo">
       <option value="efectivo">Efectivo</option>
@@ -1661,12 +1665,29 @@ function abrirDetalleFactura(id){
   document.getElementById('dfacHistorialVacio').style.display = hist.length? 'none':'block';
   document.getElementById('dfacHistorial').innerHTML = hist.map(p=>{
     const metodo = metodoPagoFactura(p);
-    const etiqueta = metodo==='tarjeta' ? 'Tarjeta' : 'Efectivo';
-    return swipeRow(`<div class="fila" onclick="editarPagoFactura('${p.id}')" style="cursor:pointer;"><div class="nombre">${formatearFecha(p.fecha)}<small>${etiqueta} · tocar para editar</small></div><div class="monto verde">${euros(p.monto)}</div></div>`, `borrarPagoFactura('${p.id}')`);
+    const d = desglosePagoFactura(p);
+    const partes = [metodo==='tarjeta' ? 'Tarjeta' : 'Efectivo'];
+    if(d.acumulado) partes.push('💰 acumulado '+euros(d.acumulado));
+    if(d.caja) partes.push('🧾 caja del día '+euros(d.caja));
+    return swipeRow(`<div class="fila" onclick="editarPagoFactura('${p.id}')" style="cursor:pointer;"><div class="nombre">${formatearFecha(p.fecha)}<small>${partes.join(' · ')} · tocar para editar</small></div><div class="monto verde">${euros(p.monto)}</div></div>`, `borrarPagoFactura('${p.id}')`);
   }).join('');
   cerrarOverlay('overlayFacturas');
   abrirOverlay('overlayDetalleFactura');
   activarDeslizables();
+}
+// un pago puede repartirse entre dinero acumulado y caja del dia, generando un gasto por cada parte
+function gastosDePagoFactura(p){
+  const ids = [];
+  if(p.gastos){
+    if(p.gastos.acumulado) ids.push(p.gastos.acumulado);
+    if(p.gastos.caja) ids.push(p.gastos.caja);
+  }
+  if(p.gastoId) ids.push(p.gastoId); // pagos antiguos, con un solo gasto vinculado
+  return ids;
+}
+function desglosePagoFactura(p){
+  if(p.desglose) return {acumulado: Number(p.desglose.acumulado)||0, caja: Number(p.desglose.caja)||0};
+  return {acumulado: Number(p.monto)||0, caja: 0}; // antes todos los pagos salian de dinero acumulado
 }
 function borrarPagoFactura(pagoId){
   const f = state.facturas.find(x=>x.id===facturaActivaId);
@@ -1674,9 +1695,8 @@ function borrarPagoFactura(pagoId){
   const pago = (f.historialPagos||[]).find(p=>p.id===pagoId);
   if(!pago) return;
   f.historialPagos = f.historialPagos.filter(p=>p.id!==pagoId);
-  if(pago.gastoId){
-    state.gastosVariables = state.gastosVariables.filter(g=>g.id!==pago.gastoId);
-  }
+  const ids = gastosDePagoFactura(pago);
+  if(ids.length) state.gastosVariables = state.gastosVariables.filter(g=>!ids.includes(g.id));
   guardarEnNube();
   abrirDetalleFactura(facturaActivaId);
   render();
@@ -1687,12 +1707,19 @@ function metodoPagoFactura(p){
   return (g && g.metodo) || 'efectivo';
 }
 let pagoFacturaEditandoId = null;
+function calcularTotalPagoFactura(){
+  const acumulado = Number(document.getElementById('pfacAcumulado').value)||0;
+  const caja = Number(document.getElementById('pfacCaja').value)||0;
+  document.getElementById('pfacTotal').textContent = euros(acumulado + caja);
+}
 function abrirPagoFactura(){
   pagoFacturaEditandoId = null;
   document.getElementById('pfacTitulo').textContent = 'Registrar pago de factura';
   document.getElementById('pfacFecha').value = fechaHoyISO();
-  document.getElementById('pfacMonto').value = '';
+  document.getElementById('pfacAcumulado').value = '';
+  document.getElementById('pfacCaja').value = '';
   document.getElementById('pfacMetodo').value = 'efectivo';
+  calcularTotalPagoFactura();
   cerrarOverlay('overlayDetalleFactura');
   abrirOverlay('overlayPagoFactura');
 }
@@ -1702,39 +1729,52 @@ function editarPagoFactura(pagoId){
   const p = (f.historialPagos||[]).find(x=>x.id===pagoId);
   if(!p) return;
   pagoFacturaEditandoId = pagoId;
+  const d = desglosePagoFactura(p);
   document.getElementById('pfacTitulo').textContent = 'Editar pago de factura';
   document.getElementById('pfacFecha').value = p.fecha;
-  document.getElementById('pfacMonto').value = p.monto;
+  document.getElementById('pfacAcumulado').value = d.acumulado || '';
+  document.getElementById('pfacCaja').value = d.caja || '';
   document.getElementById('pfacMetodo').value = metodoPagoFactura(p);
+  calcularTotalPagoFactura();
   cerrarOverlay('overlayDetalleFactura');
   abrirOverlay('overlayPagoFactura');
 }
 function guardarPagoFactura(){
   const fecha = document.getElementById('pfacFecha').value;
-  const monto = Number(document.getElementById('pfacMonto').value);
+  const acumulado = Number(document.getElementById('pfacAcumulado').value)||0;
+  const caja = Number(document.getElementById('pfacCaja').value)||0;
   const metodo = document.getElementById('pfacMetodo').value;
-  if(!fecha || !monto){ alert('Indica fecha e importe.'); return; }
+  const monto = Math.round((acumulado + caja)*100)/100;
+  if(!fecha || !monto){ alert('Indica la fecha y al menos uno de los dos importes.'); return; }
   const f = state.facturas.find(x=>x.id===facturaActivaId);
   if(f){
     const concepto = 'Pago factura: '+(f.proveedor||f.concepto);
+    // si se esta editando, se rehacen los gastos vinculados para que cuadren con el nuevo reparto
+    let p = null;
     if(pagoFacturaEditandoId){
-      const p = (f.historialPagos||[]).find(x=>x.id===pagoFacturaEditandoId);
+      p = (f.historialPagos||[]).find(x=>x.id===pagoFacturaEditandoId);
       if(p){
-        p.fecha = fecha; p.monto = monto; p.metodo = metodo;
-        const g = p.gastoId ? state.gastosVariables.find(x=>x.id===p.gastoId) : null;
-        if(g){ g.fecha = fecha; g.monto = monto; g.metodo = metodo; }
-        else {
-          // el gasto vinculado ya no existe: se vuelve a crear para que cuadre con Gastos
-          const gastoId = cid();
-          state.gastosVariables.push({id:gastoId, fecha, concepto, monto, categoria:'Otro', metodo, proveedor:f.proveedor, origen:'acumulado', usuario: usuarioActual(), vinculado:'factura'});
-          p.gastoId = gastoId;
-        }
+        const viejos = gastosDePagoFactura(p);
+        if(viejos.length) state.gastosVariables = state.gastosVariables.filter(g=>!viejos.includes(g.id));
       }
+    }
+    const gastos = {};
+    if(acumulado>0){
+      const id = cid();
+      state.gastosVariables.push({id, fecha, concepto, monto:acumulado, categoria:'Otro', metodo, proveedor:f.proveedor, origen:'acumulado', usuario: usuarioActual(), vinculado:'factura'});
+      gastos.acumulado = id;
+    }
+    if(caja>0){
+      const id = cid();
+      state.gastosVariables.push({id, fecha, concepto, monto:caja, categoria:'Otro', metodo, proveedor:f.proveedor, origen:'caja', usuario: usuarioActual(), vinculado:'factura'});
+      gastos.caja = id;
+    }
+    if(p){
+      p.fecha=fecha; p.monto=monto; p.metodo=metodo; p.desglose={acumulado,caja}; p.gastos=gastos;
+      delete p.gastoId;
     } else {
-      const gastoId = cid();
-      state.gastosVariables.push({id:gastoId, fecha, concepto, monto, categoria:'Otro', metodo, proveedor:f.proveedor, origen:'acumulado', usuario: usuarioActual(), vinculado:'factura'});
       if(!f.historialPagos) f.historialPagos = [];
-      f.historialPagos.push({id:cid(), fecha, monto, metodo, gastoId});
+      f.historialPagos.push({id:cid(), fecha, monto, metodo, desglose:{acumulado,caja}, gastos});
     }
   }
   guardarEnNube();
