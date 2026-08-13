@@ -1303,9 +1303,16 @@ function setSync(ok){
   label.textContent = ok ? 'Sincronizado' : 'Sin conexión (guardado local)';
 }
 
+let avisoTamanoMostrado = false;
 async function guardarEnNube(){
   try{
-    await docRef.set({ json: JSON.stringify(state), actualizado: new Date().toISOString() });
+    const payload = JSON.stringify(state);
+    // Firestore no deja guardar documentos de mas de 1MB: avisamos antes de llegar al tope
+    if(payload.length > 800000 && !avisoTamanoMostrado){
+      avisoTamanoMostrado = true;
+      alert('⚠️ Los datos ocupan ya el '+Math.round(payload.length/10485.76)/100+'% del espacio disponible. Avisa a Jerry para que lo revise antes de que la app deje de poder guardar.');
+    }
+    await docRef.set({ json: payload, actualizado: new Date().toISOString() });
     setSync(true);
     return true;
   } catch(e){
