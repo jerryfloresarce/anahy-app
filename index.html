@@ -418,12 +418,13 @@
         <div id="ahorroBarra" style="background:var(--verde-claro); height:100%; width:0%; transition:width 0.3s;"></div>
       </div>
       <button class="btn" onclick="abrirAportacionAhorro()">+ Añadir aportación de hoy</button>
+      <button class="btn secundario" style="margin-top:8px;" onclick="abrirRetiradaAhorro()">− Registrar retirada</button>
       <button class="btn secundario" style="margin-top:8px;" onclick="marcarAlquilerPagado()">Marcar alquiler pagado</button>
       <button class="btn secundario" style="margin-top:8px;" onclick="abrirAjusteObjetivoAhorro()">Ajustar objetivo / ahorro manualmente</button>
-      <h2 onclick="toggleSeccion('sec-ahorro-historial')" style="cursor:pointer; user-select:none; margin-top:18px;">Historial de aportaciones <span class="chev" id="chev-sec-ahorro-historial" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
+      <h2 onclick="toggleSeccion('sec-ahorro-historial')" style="cursor:pointer; user-select:none; margin-top:18px;">Historial de movimientos <span class="chev" id="chev-sec-ahorro-historial" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
       <div id="sec-ahorro-historial" class="collapsible-content">
         <div id="listaAportacionesAhorro"></div>
-        <div class="empty" id="emptyAhorro" style="display:none;">Todavía no hay aportaciones registradas.</div>
+        <div class="empty" id="emptyAhorro" style="display:none;">Todavía no hay movimientos registrados.</div>
       </div>
     </div>
   </section>
@@ -508,7 +509,7 @@
 
 <div class="form-overlay" id="overlayPagoFactura">
   <div class="form-sheet">
-    <h3>Registrar pago de factura</h3>
+    <h3 id="pfacTitulo">Registrar pago de factura</h3>
     <label>Fecha del pago</label>
     <input type="date" id="pfacFecha">
     <label>Importe pagado (€)</label>
@@ -840,6 +841,23 @@
     <div class="form-btns">
       <button class="btn secundario" onclick="cerrarOverlay('overlayAportacionAhorro')">Cancelar</button>
       <button class="btn" onclick="guardarAportacionAhorro()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="form-overlay" id="overlayRetiradaAhorro">
+  <div class="form-sheet">
+    <h3 id="raTitulo">Retirar dinero del ahorro</h3>
+    <p style="font-size:0.8rem; color:var(--tinta-suave);">Si sacáis dinero del ahorro del alquiler para otra cosa, apúntalo aquí en vez de cambiar el total a mano — así queda registrado por qué se sacó.</p>
+    <label>Importe que se saca (€)</label>
+    <input type="number" step="0.01" id="raMonto" placeholder="50.00">
+    <label>Motivo</label>
+    <input type="text" id="raMotivo" placeholder="Ej. comprar en Komkal">
+    <label>Fecha</label>
+    <input type="date" id="raFecha">
+    <div class="form-btns">
+      <button class="btn secundario" onclick="cerrarOverlay('overlayRetiradaAhorro')">Cancelar</button>
+      <button class="btn" onclick="guardarRetiradaAhorro()">Guardar</button>
     </div>
   </div>
 </div>
@@ -1634,9 +1652,11 @@ function abrirDetalleFactura(id){
   document.getElementById('dfacInfo').textContent = f.concepto + ' · ' + formatearFecha(f.fecha);
   const hist = [...(f.historialPagos||[])].sort((a,b)=>b.fecha.localeCompare(a.fecha));
   document.getElementById('dfacHistorialVacio').style.display = hist.length? 'none':'block';
-  document.getElementById('dfacHistorial').innerHTML = hist.map(p=>
-    swipeRow(`<div class="fila"><div class="nombre">${formatearFecha(p.fecha)}</div><div class="monto verde">${euros(p.monto)}</div></div>`, `borrarPagoFactura('${p.id}')`)
-  ).join('');
+  document.getElementById('dfacHistorial').innerHTML = hist.map(p=>{
+    const metodo = metodoPagoFactura(p);
+    const etiqueta = metodo==='tarjeta' ? 'Tarjeta' : 'Efectivo';
+    return swipeRow(`<div class="fila" onclick="editarPagoFactura('${p.id}')" style="cursor:pointer;"><div class="nombre">${formatearFecha(p.fecha)}<small>${etiqueta} · tocar para editar</small></div><div class="monto verde">${euros(p.monto)}</div></div>`, `borrarPagoFactura('${p.id}')`);
+  }).join('');
   cerrarOverlay('overlayFacturas');
   abrirOverlay('overlayDetalleFactura');
   activarDeslizables();
@@ -1654,10 +1674,31 @@ function borrarPagoFactura(pagoId){
   abrirDetalleFactura(facturaActivaId);
   render();
 }
+function metodoPagoFactura(p){
+  if(p.metodo) return p.metodo;
+  const g = p.gastoId ? state.gastosVariables.find(x=>x.id===p.gastoId) : null;
+  return (g && g.metodo) || 'efectivo';
+}
+let pagoFacturaEditandoId = null;
 function abrirPagoFactura(){
+  pagoFacturaEditandoId = null;
+  document.getElementById('pfacTitulo').textContent = 'Registrar pago de factura';
   document.getElementById('pfacFecha').value = fechaHoyISO();
   document.getElementById('pfacMonto').value = '';
   document.getElementById('pfacMetodo').value = 'efectivo';
+  cerrarOverlay('overlayDetalleFactura');
+  abrirOverlay('overlayPagoFactura');
+}
+function editarPagoFactura(pagoId){
+  const f = state.facturas.find(x=>x.id===facturaActivaId);
+  if(!f) return;
+  const p = (f.historialPagos||[]).find(x=>x.id===pagoId);
+  if(!p) return;
+  pagoFacturaEditandoId = pagoId;
+  document.getElementById('pfacTitulo').textContent = 'Editar pago de factura';
+  document.getElementById('pfacFecha').value = p.fecha;
+  document.getElementById('pfacMonto').value = p.monto;
+  document.getElementById('pfacMetodo').value = metodoPagoFactura(p);
   cerrarOverlay('overlayDetalleFactura');
   abrirOverlay('overlayPagoFactura');
 }
@@ -1668,13 +1709,30 @@ function guardarPagoFactura(){
   if(!fecha || !monto){ alert('Indica fecha e importe.'); return; }
   const f = state.facturas.find(x=>x.id===facturaActivaId);
   if(f){
-    const gastoId = cid();
-    state.gastosVariables.push({id:gastoId, fecha, concepto:'Pago factura: '+(f.proveedor||f.concepto), monto, categoria:'Otro', metodo, proveedor:f.proveedor, origen:'acumulado', usuario: usuarioActual(), vinculado:'factura'});
-    if(!f.historialPagos) f.historialPagos = [];
-    f.historialPagos.push({id:cid(), fecha, monto, gastoId});
+    const concepto = 'Pago factura: '+(f.proveedor||f.concepto);
+    if(pagoFacturaEditandoId){
+      const p = (f.historialPagos||[]).find(x=>x.id===pagoFacturaEditandoId);
+      if(p){
+        p.fecha = fecha; p.monto = monto; p.metodo = metodo;
+        const g = p.gastoId ? state.gastosVariables.find(x=>x.id===p.gastoId) : null;
+        if(g){ g.fecha = fecha; g.monto = monto; g.metodo = metodo; }
+        else {
+          // el gasto vinculado ya no existe: se vuelve a crear para que cuadre con Gastos
+          const gastoId = cid();
+          state.gastosVariables.push({id:gastoId, fecha, concepto, monto, categoria:'Otro', metodo, proveedor:f.proveedor, origen:'acumulado', usuario: usuarioActual(), vinculado:'factura'});
+          p.gastoId = gastoId;
+        }
+      }
+    } else {
+      const gastoId = cid();
+      state.gastosVariables.push({id:gastoId, fecha, concepto, monto, categoria:'Otro', metodo, proveedor:f.proveedor, origen:'acumulado', usuario: usuarioActual(), vinculado:'factura'});
+      if(!f.historialPagos) f.historialPagos = [];
+      f.historialPagos.push({id:cid(), fecha, monto, metodo, gastoId});
+    }
   }
   guardarEnNube();
   cerrarOverlay('overlayPagoFactura');
+  pagoFacturaEditandoId = null;
   abrirDetalleFactura(facturaActivaId);
   render();
 }
@@ -2219,11 +2277,13 @@ function renderAhorro(){
   const listo = a.ahorrado >= a.objetivo;
   document.getElementById('celebracionAlquiler').style.display = listo ? 'block' : 'none';
   document.getElementById('ahorroObjetivoBox').className = 'kpi ' + (listo ? 'pos' : 'info');
-  const aportaciones = [...(a.aportaciones||[])].sort((x,y)=> y.fecha.localeCompare(x.fecha));
-  document.getElementById('emptyAhorro').style.display = aportaciones.length? 'none':'block';
-  document.getElementById('listaAportacionesAhorro').innerHTML = aportaciones.map(x=>
-    swipeRow(`<div class="fila" onclick="editarAportacionAhorro('${x.id}')" style="cursor:pointer;"><div class="nombre">${formatearFecha(x.fecha)}</div><div class="monto verde">${euros(x.monto)}</div></div>`, `borrarAportacionAhorro('${x.id}')`)
-  ).join('');
+  const movimientos = [...(a.aportaciones||[])].sort((x,y)=> y.fecha.localeCompare(x.fecha));
+  document.getElementById('emptyAhorro').style.display = movimientos.length? 'none':'block';
+  document.getElementById('listaAportacionesAhorro').innerHTML = movimientos.map(x=>{
+    const esRetiro = x.tipo==='retiro';
+    const detalle = esRetiro ? '<small>🔻 Retirada'+(x.motivo? ': '+x.motivo : '')+'</small>' : '';
+    return swipeRow(`<div class="fila" onclick="editarAportacionAhorro('${x.id}')" style="cursor:pointer;"><div class="nombre">${formatearFecha(x.fecha)}${detalle}</div><div class="monto ${esRetiro?'rojo':'verde'}">${esRetiro?'−':'+'}${euros(x.monto)}</div></div>`, `borrarAportacionAhorro('${x.id}')`);
+  }).join('');
 }
 let aportacionAhorroEditandoId = null;
 function abrirAportacionAhorro(){
@@ -2235,6 +2295,7 @@ function editarAportacionAhorro(id){
   const a = state.ahorroAlquiler;
   const ap = (a.aportaciones||[]).find(x=>x.id===id);
   if(!ap) return;
+  if(ap.tipo==='retiro'){ abrirRetiradaAhorro(id); return; }
   aportacionAhorroEditandoId = id;
   document.getElementById('aaMonto').value = ap.monto;
   abrirOverlay('overlayAportacionAhorro');
@@ -2243,9 +2304,56 @@ function borrarAportacionAhorro(id){
   const a = state.ahorroAlquiler;
   const ap = (a.aportaciones||[]).find(x=>x.id===id);
   if(!ap) return;
-  a.ahorrado = Math.max(0, Number(a.ahorrado) - Number(ap.monto));
+  // al borrar una retirada el dinero vuelve al ahorro; al borrar una aportación, se resta
+  a.ahorrado = ap.tipo==='retiro'
+    ? Number(a.ahorrado) + Number(ap.monto)
+    : Math.max(0, Number(a.ahorrado) - Number(ap.monto));
   a.aportaciones = a.aportaciones.filter(x=>x.id!==id);
   guardarEnNube(); render();
+}
+let retiradaAhorroEditandoId = null;
+function abrirRetiradaAhorro(id){
+  const a = state.ahorroAlquiler;
+  retiradaAhorroEditandoId = id || null;
+  if(id){
+    const r = (a.aportaciones||[]).find(x=>x.id===id);
+    if(!r) return;
+    document.getElementById('raTitulo').textContent = 'Editar retirada';
+    document.getElementById('raMonto').value = r.monto;
+    document.getElementById('raMotivo').value = r.motivo || '';
+    document.getElementById('raFecha').value = r.fecha;
+  } else {
+    document.getElementById('raTitulo').textContent = 'Retirar dinero del ahorro';
+    document.getElementById('raMonto').value = '';
+    document.getElementById('raMotivo').value = '';
+    document.getElementById('raFecha').value = fechaHoyISO();
+  }
+  abrirOverlay('overlayRetiradaAhorro');
+}
+function guardarRetiradaAhorro(){
+  const monto = Number(document.getElementById('raMonto').value);
+  const motivo = document.getElementById('raMotivo').value.trim();
+  const fecha = document.getElementById('raFecha').value;
+  if(!monto || monto<=0){ alert('Indica un importe válido.'); return; }
+  if(!motivo){ alert('Indica para qué se saca el dinero.'); return; }
+  if(!fecha){ alert('Indica la fecha.'); return; }
+  const a = state.ahorroAlquiler;
+  if(!a.aportaciones) a.aportaciones = [];
+  if(retiradaAhorroEditandoId){
+    const r = a.aportaciones.find(x=>x.id===retiradaAhorroEditandoId);
+    if(r){
+      a.ahorrado = Number(a.ahorrado) + Number(r.monto) - monto;
+      r.monto = monto; r.motivo = motivo; r.fecha = fecha;
+    }
+  } else {
+    if(monto > Number(a.ahorrado)){
+      if(!confirm('Vas a sacar más de lo que hay ahorrado ('+euros(a.ahorrado)+'). El ahorro quedará en 0€. ¿Continuar?')) return;
+    }
+    a.ahorrado = Number(a.ahorrado) - monto;
+    a.aportaciones.push({id:cid(), fecha, monto, tipo:'retiro', motivo});
+  }
+  if(a.ahorrado < 0) a.ahorrado = 0;
+  guardarEnNube(); cerrarOverlay('overlayRetiradaAhorro'); retiradaAhorroEditandoId=null; render();
 }
 function guardarAportacionAhorro(){
   const monto = Number(document.getElementById('aaMonto').value);
