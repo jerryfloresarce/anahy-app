@@ -393,10 +393,12 @@
   <section class="tab-panel" id="tab-prestamo">
     <div class="card">
       <h2>Préstamo Jerry → mamá</h2>
-      <div class="kpi-grid" style="margin-bottom:10px;">
+      <div class="kpi-grid tres" style="margin-bottom:10px;">
         <div class="kpi info"><div class="label">Prestado</div><div class="valor" id="prestInicial">500€</div></div>
-        <div class="kpi neg"><div class="label">Saldo pendiente</div><div class="valor" id="prestSaldo">500€</div></div>
+        <div class="kpi warn"><div class="label">A devolver</div><div class="valor" id="prestTotal">600€</div></div>
+        <div class="kpi neg"><div class="label">Pendiente</div><div class="valor" id="prestSaldo">600€</div></div>
       </div>
+      <div class="empty" style="padding:0 0 10px 0;" id="prestInteresTexto"></div>
       <div class="empty" style="padding-top:0;" id="prestFechaFin"></div>
       <button class="btn" onclick="registrarPago()">Registrar pago</button>
       <button class="btn secundario" style="margin-top:8px;" onclick="renovarCiclo()">Renovar ciclo (nuevo préstamo de 500€)</button>
@@ -827,8 +829,14 @@
 
 <div class="form-overlay" id="overlayAjusteSaldo">
   <div class="form-sheet">
-    <h3>Ajustar saldo pendiente</h3>
+    <h3>Ajustar préstamo</h3>
+    <label>Dinero prestado (€)</label><input type="number" step="0.01" id="ajPrestado" placeholder="500.00" oninput="calcularAjustePrestamo()">
+    <label>Interés pactado (€)</label><input type="number" step="0.01" id="ajInteres" placeholder="100.00" oninput="calcularAjustePrestamo()">
+    <label>Cuota de cada día (€)</label><input type="number" step="0.01" id="ajCuota" placeholder="30.00" oninput="calcularAjustePrestamo()">
+    <div class="total-linea"><span>Total a devolver</span><span id="ajTotalDevolver">0,00€</span></div>
+    <p style="font-size:0.74rem; color:var(--tinta-suave); margin-top:6px;" id="ajPagosTexto"></p>
     <label>Saldo real que debe ahora mismo (€)</label><input type="number" step="0.01" id="ajSaldo" placeholder="0.00">
+    <p style="font-size:0.74rem; color:var(--tinta-suave); margin-top:4px;">Es lo que le queda por devolver del total, contando ya el interés.</p>
     <div class="form-btns">
       <button class="btn secundario" onclick="cerrarOverlay('overlayAjusteSaldo')">Cancelar</button>
       <button class="btn" onclick="guardarAjusteSaldo()">Guardar</button>
@@ -1032,7 +1040,7 @@ function defaultState(){
       {id:cid(), cliente:'melody', monto:112.51, historial:[]},
       {id:cid(), cliente:'dulce brasilena', monto:90.61, historial:[]}
     ],
-    prestamoPersonal: { montoInicial:500, saldo:270, cuotaDiaria:30, pagos:[] },
+    prestamoPersonal: { montoInicial:500, interes:100, saldo:270, cuotaDiaria:30, pagos:[] },
     stock: [],
     caducidades: [],
     familiasCaducidad: ['Lácteos','Productos en bolsa','Bollería','Enlatados','Bebidas'],
@@ -2285,10 +2293,18 @@ function toggleDiaFiado(id){
   el.style.display = el.style.display==='none' ? 'block' : 'none';
 }
 
+// lo que hay que devolver es el dinero prestado mas el interes pactado
+function totalADevolver(p){ return Number(p.montoInicial||0) + Number(p.interes||0); }
 function renderPrestamo(){
   const p = state.prestamoPersonal;
+  const total = totalADevolver(p);
   document.getElementById('prestInicial').textContent = euros(p.montoInicial);
+  document.getElementById('prestTotal').textContent = euros(total);
   document.getElementById('prestSaldo').textContent = euros(p.saldo);
+  const interesEl = document.getElementById('prestInteresTexto');
+  interesEl.textContent = Number(p.interes||0) > 0
+    ? euros(p.montoInicial)+' prestados + '+euros(p.interes)+' de interés = '+euros(total)+' en '+Math.ceil(total/p.cuotaDiaria)+' pagos de '+euros(p.cuotaDiaria)
+    : 'Sin interés — '+euros(total)+' en pagos de '+euros(p.cuotaDiaria);
   const pagos = [...p.pagos].sort((a,b)=> b.fecha.localeCompare(a.fecha));
   document.getElementById('emptyPrestamo').style.display = pagos.length? 'none':'block';
   document.getElementById('listaPagosPrestamo').innerHTML = pagos.map(x=>
@@ -2984,7 +3000,7 @@ function confirmarRegistrarPago(){
   const sumarGasto = document.getElementById('rpSumarGasto').checked;
   if(pagoPrestamoEditandoId){
     const anterior = p.pagos.find(x=>x.id===pagoPrestamoEditandoId);
-    if(anterior){ p.saldo = Math.min(p.montoInicial, p.saldo + anterior.monto); anterior.fecha=fecha; anterior.monto=pago; p.saldo = Math.max(0, p.saldo - pago); }
+    if(anterior){ p.saldo = Math.min(totalADevolver(p), p.saldo + anterior.monto); anterior.fecha=fecha; anterior.monto=pago; p.saldo = Math.max(0, p.saldo - pago); }
   } else {
     p.saldo = Math.max(0, p.saldo - pago);
     p.pagos.push({id:cid(), fecha, monto: pago});
@@ -3010,24 +3026,50 @@ function borrarPagoPrestamo(id){
   const p = state.prestamoPersonal;
   const pago = p.pagos.find(x=>x.id===id);
   if(!pago) return;
-  p.saldo = Math.min(p.montoInicial, p.saldo + Number(pago.monto));
+  p.saldo = Math.min(totalADevolver(p), p.saldo + Number(pago.monto));
   p.pagos = p.pagos.filter(x=>x.id!==id);
   guardarEnNube(); render();
 }
 function abrirAjusteSaldo(){
-  document.getElementById('ajSaldo').value = state.prestamoPersonal.saldo;
+  const p = state.prestamoPersonal;
+  document.getElementById('ajPrestado').value = p.montoInicial;
+  document.getElementById('ajInteres').value = Number(p.interes||0);
+  document.getElementById('ajCuota').value = p.cuotaDiaria;
+  document.getElementById('ajSaldo').value = p.saldo;
+  calcularAjustePrestamo();
   abrirOverlay('overlayAjusteSaldo');
 }
+function calcularAjustePrestamo(){
+  const prestado = Number(document.getElementById('ajPrestado').value)||0;
+  const interes = Number(document.getElementById('ajInteres').value)||0;
+  const cuota = Number(document.getElementById('ajCuota').value)||0;
+  const total = prestado + interes;
+  document.getElementById('ajTotalDevolver').textContent = euros(total);
+  document.getElementById('ajPagosTexto').textContent = (cuota>0 && total>0)
+    ? 'Serían '+Math.ceil(total/cuota)+' pagos de '+euros(cuota)+(total%cuota ? ' (el último de '+euros(total%cuota)+')' : '')+', sin contar domingos.'
+    : '';
+}
 function guardarAjusteSaldo(){
+  const prestado = Number(document.getElementById('ajPrestado').value);
+  const interes = Number(document.getElementById('ajInteres').value);
+  const cuota = Number(document.getElementById('ajCuota').value);
   const nuevo = Number(document.getElementById('ajSaldo').value);
-  if(isNaN(nuevo) || nuevo<0){ alert('Indica un importe válido.'); return; }
-  state.prestamoPersonal.saldo = nuevo;
+  if(isNaN(prestado) || prestado<0 || isNaN(interes) || interes<0){ alert('Indica valores válidos para el préstamo y el interés.'); return; }
+  if(isNaN(cuota) || cuota<=0){ alert('La cuota diaria tiene que ser mayor que 0.'); return; }
+  if(isNaN(nuevo) || nuevo<0){ alert('Indica un saldo válido.'); return; }
+  const p = state.prestamoPersonal;
+  p.montoInicial = prestado;
+  p.interes = interes;
+  p.cuotaDiaria = cuota;
+  p.saldo = nuevo;
   guardarEnNube(); cerrarOverlay('overlayAjusteSaldo'); render();
 }
 function renovarCiclo(){
   const p = state.prestamoPersonal;
   if(p.saldo>0){ if(!confirm('Aún queda saldo pendiente ('+euros(p.saldo)+'). ¿Iniciar un nuevo préstamo de todas formas?')) return; }
-  p.saldo = p.montoInicial;
+  const total = totalADevolver(p);
+  if(!confirm('Nuevo préstamo de '+euros(p.montoInicial)+(Number(p.interes||0)>0 ? ' + '+euros(p.interes)+' de interés' : '')+'. A devolver: '+euros(total)+'. ¿Continuar?')) return;
+  p.saldo = total;
   guardarEnNube(); render();
 }
 </script>
