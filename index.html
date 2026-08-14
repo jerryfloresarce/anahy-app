@@ -2303,14 +2303,24 @@ function renderPrestamo(){
     let fecha = new Date(); fecha.setHours(0,0,0,0);
     const hoyISO = fechaISO(fecha);
     const pagoHoy = p.pagos.some(x=>x.fecha===hoyISO);
-    if(!pagoHoy && fecha.getDay()!==0){ restante -= p.cuotaDiaria; }
+    let pagosRestantes = 0;
+    if(!pagoHoy && fecha.getDay()!==0){ restante -= p.cuotaDiaria; pagosRestantes++; }
     let dias = 0;
     while(restante>0 && dias<400){
       fecha.setDate(fecha.getDate()+1);
-      if(fecha.getDay()!==0){ restante -= p.cuotaDiaria; }
+      if(fecha.getDay()!==0){ restante -= p.cuotaDiaria; pagosRestantes++; }
       dias++;
     }
-    fechaFinEl.textContent = 'Fecha fin de este préstamo: '+formatearFecha(fechaISO(fecha));
+    // el ultimo pago suele ser mas pequeño que la cuota, porque el saldo no es multiplo exacto
+    const ultimoPago = p.cuotaDiaria + restante;
+    const detalle = pagosRestantes<=1
+      ? 'Queda 1 pago de '+euros(p.saldo)+'.'
+      : (ultimoPago < p.cuotaDiaria
+          ? 'Quedan '+pagosRestantes+' pagos: '+(pagosRestantes-1)+' de '+euros(p.cuotaDiaria)+' y el último de '+euros(ultimoPago)+'.'
+          : 'Quedan '+pagosRestantes+' pagos de '+euros(p.cuotaDiaria)+'.');
+    fechaFinEl.innerHTML = 'Fecha fin de este préstamo: <strong>'+formatearFecha(fechaISO(fecha))+'</strong>'
+      + '<div style="font-size:0.78rem; margin-top:4px;">'+detalle+' Se cuentan todos los días menos los domingos'
+      + (pagoHoy ? ', empezando mañana porque hoy ya está pagado.' : ', contando hoy.')+'</div>';
   }
   renderAhorro();
 }
