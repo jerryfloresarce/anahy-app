@@ -1441,7 +1441,8 @@ function renderResumen(){
   document.getElementById('kpiFiados').textContent = euros(totalFiadosPendiente());
 
   const hoyCad0 = new Date(); hoyCad0.setHours(0,0,0,0);
-  const cadUrgentes = (state.caducidades||[]).filter(c => (c.fechas||[]).some(f => Math.round((new Date(f+'T00:00:00')-hoyCad0)/(1000*60*60*24)) <= 3));
+  // los ya retirados no cuentan: de esos ya os habeis ocupado
+  const cadUrgentes = (state.caducidades||[]).filter(c => !c.retirado && (c.fechas||[]).some(f => Math.round((new Date(f+'T00:00:00')-hoyCad0)/(1000*60*60*24)) <= 3));
   const cadUrgentesSinDevolucion = cadUrgentes.filter(c => !c.devolucion);
   const stockBox = document.getElementById('kpiStockBox');
   stockBox.className = 'kpi ' + (cadUrgentes.length>0 ? 'neg':'pos');
