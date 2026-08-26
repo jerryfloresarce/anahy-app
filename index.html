@@ -189,6 +189,7 @@
 
   .aviso{ background: rgba(232,121,45,0.12); border:1px solid rgba(232,121,45,0.35); color: var(--papaya-oscuro); font-family:'Segoe UI',sans-serif; font-size:0.8rem; padding:10px 12px; border-radius:12px; margin-bottom:14px; }
   .aviso.critico{ background: rgba(193,68,59,0.12); border-color: rgba(193,68,59,0.35); color: var(--rojo); }
+  .aviso.atencion{ background: rgba(244,185,66,0.18); border-color: rgba(244,185,66,0.55); color: #8A6410; }
 
   input[type="date"], input[type="month"]{ min-width:0; max-width:100%; box-sizing:border-box; -webkit-appearance:none; appearance:none; }
 </style>
@@ -1452,17 +1453,22 @@ function renderResumen(){
   // avisos (solo cosas realmente accionables por vosotros)
   const avisos = [];
   if(ingresos===0) avisos.push({texto:'📝 Aún no has apuntado ingresos este mes.', tab:'ingresos'});
-  cadUrgentesSinDevolucion.forEach(c=>{
+  // rojo para lo que ya caduco y sigue puesto; amarillo para lo que caduca pronto
+  const avisosCaducidad = cadUrgentesSinDevolucion.map(c=>{
     const fechas = c.fechas||[];
     const diasMin = Math.min(...fechas.map(f => Math.round((new Date(f+'T00:00:00')-hoyCad0)/(1000*60*60*24))));
-    const texto = diasMin<0 ? '☠️ '+c.nombre+' (no se puede devolver) — Caducó hace '+Math.abs(diasMin)+' '+plural(Math.abs(diasMin),'día','días') : (diasMin===0 ? '☠️ '+c.nombre+' (no se puede devolver) — Caduca hoy' : '☠️ '+c.nombre+' (no se puede devolver) — Caduca en '+diasMin+' '+plural(diasMin,'día','días'));
-    avisos.push({texto, tab:'stock'});
-  });
+    const caducado = diasMin<0;
+    const icono = caducado ? '☠️' : '⚠️';
+    const cola = caducado ? 'Caducó hace '+Math.abs(diasMin)+' '+plural(Math.abs(diasMin),'día','días')
+      : (diasMin===0 ? 'Caduca hoy' : 'Caduca en '+diasMin+' '+plural(diasMin,'día','días'));
+    return {texto: icono+' '+c.nombre+' (no se puede devolver) — '+cola, tab:'stock', nivel: caducado?'critico':'atencion', diasMin};
+  }).sort((a,b)=> a.diasMin-b.diasMin);
+  avisosCaducidad.forEach(a=>avisos.push(a));
   const pendientesPago = state.gastosFijos.filter(g => !obtenerRegistroFijo(selectedMonth, g).pagado);
   const cardAvisos = document.getElementById('cardAvisos');
   if(avisos.length){
     cardAvisos.style.display='block';
-    cardAvisos.innerHTML = '<h2>Avisos</h2>' + avisos.map(a=>`<div class="aviso" style="cursor:pointer;" onclick="cambiarTab('${a.tab}')">${a.texto}</div>`).join('');
+    cardAvisos.innerHTML = '<h2>Avisos</h2>' + avisos.map(a=>`<div class="aviso ${a.nivel||''}" style="cursor:pointer;" onclick="cambiarTab('${a.tab}')">${a.texto}</div>`).join('');
   } else {
     cardAvisos.style.display='none';
   }
