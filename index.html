@@ -420,7 +420,7 @@
       <div style="background:var(--crema-osc); border-radius:8px; height:14px; overflow:hidden; margin-bottom:12px;">
         <div id="ahorroBarra" style="background:var(--verde-claro); height:100%; width:0%; transition:width 0.3s;"></div>
       </div>
-      <button class="btn" onclick="abrirAportacionAhorro()">+ Añadir aportación de hoy</button>
+      <button class="btn" onclick="abrirAportacionAhorro()">+ Añadir aportación</button>
       <button class="btn secundario" style="margin-top:8px;" onclick="abrirRetiradaAhorro()">− Registrar retirada</button>
       <button class="btn secundario" style="margin-top:8px;" onclick="marcarAlquilerPagado()">Marcar alquiler pagado</button>
       <button class="btn secundario" style="margin-top:8px;" onclick="abrirAjusteObjetivoAhorro()">Ajustar objetivo / ahorro manualmente</button>
@@ -847,10 +847,13 @@
 
 <div class="form-overlay" id="overlayAportacionAhorro">
   <div class="form-sheet">
-    <h3>Aportación de hoy al ahorro del alquiler</h3>
+    <h3 id="aaTitulo">Aportación al ahorro del alquiler</h3>
     <p style="font-size:0.8rem; color:var(--tinta-suave);">Este dinero sale de caja pero no es un gasto — es un ahorro que sigue siendo de tu madre, así que no resta de ningún cálculo de ingresos o gastos.</p>
     <label>Importe (€)</label>
     <input type="number" step="0.01" id="aaMonto" placeholder="40.00">
+    <label>Fecha</label>
+    <input type="date" id="aaFecha">
+    <p style="font-size:0.74rem; color:var(--tinta-suave); margin-top:4px;">Cambia la fecha si estás apuntando dinero de otro día que se te olvidó.</p>
     <div class="form-btns">
       <button class="btn secundario" onclick="cerrarOverlay('overlayAportacionAhorro')">Cancelar</button>
       <button class="btn" onclick="guardarAportacionAhorro()">Guardar</button>
@@ -2368,7 +2371,9 @@ function renderAhorro(){
 let aportacionAhorroEditandoId = null;
 function abrirAportacionAhorro(){
   aportacionAhorroEditandoId = null;
+  document.getElementById('aaTitulo').textContent = 'Aportación al ahorro del alquiler';
   document.getElementById('aaMonto').value = '';
+  document.getElementById('aaFecha').value = fechaHoyISO();
   abrirOverlay('overlayAportacionAhorro');
 }
 function editarAportacionAhorro(id){
@@ -2377,7 +2382,9 @@ function editarAportacionAhorro(id){
   if(!ap) return;
   if(ap.tipo==='retiro'){ abrirRetiradaAhorro(id); return; }
   aportacionAhorroEditandoId = id;
+  document.getElementById('aaTitulo').textContent = 'Editar aportación';
   document.getElementById('aaMonto').value = ap.monto;
+  document.getElementById('aaFecha').value = ap.fecha || fechaHoyISO();
   abrirOverlay('overlayAportacionAhorro');
 }
 function borrarAportacionAhorro(id){
@@ -2437,15 +2444,17 @@ function guardarRetiradaAhorro(){
 }
 function guardarAportacionAhorro(){
   const monto = Number(document.getElementById('aaMonto').value);
+  const fecha = document.getElementById('aaFecha').value;
   if(!monto || monto<=0){ alert('Indica un importe válido.'); return; }
+  if(!fecha){ alert('Indica la fecha.'); return; }
   const a = state.ahorroAlquiler;
   if(!a.aportaciones) a.aportaciones = [];
   if(aportacionAhorroEditandoId){
     const ap = a.aportaciones.find(x=>x.id===aportacionAhorroEditandoId);
-    if(ap){ a.ahorrado = Number(a.ahorrado) - Number(ap.monto) + monto; ap.monto = monto; }
+    if(ap){ a.ahorrado = Number(a.ahorrado) - Number(ap.monto) + monto; ap.monto = monto; ap.fecha = fecha; }
   } else {
     a.ahorrado = Number(a.ahorrado) + monto;
-    a.aportaciones.push({id:cid(), fecha: fechaHoyISO(), monto});
+    a.aportaciones.push({id:cid(), fecha, monto});
   }
   guardarEnNube(); cerrarOverlay('overlayAportacionAhorro'); aportacionAhorroEditandoId=null; render();
 }
