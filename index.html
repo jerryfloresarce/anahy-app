@@ -643,8 +643,9 @@
 
 <div class="form-overlay" id="overlayIngreso">
   <div class="form-sheet">
-    <h3>Ingreso del día</h3>
-    <label>Fecha</label><input type="date" id="iFecha">
+    <h3 id="iTitulo">Ingreso del día</h3>
+    <label>Fecha</label><input type="date" id="iFecha" onchange="onCambioFechaIngreso()">
+    <p id="iAviso" style="font-size:0.74rem; color:var(--papaya-oscuro); margin-top:4px;"></p>
     <label>Efectivo (€)</label><input type="number" step="0.01" id="iEfectivo" placeholder="0.00">
     <label>Tarjeta (€)</label><input type="number" step="0.01" id="iTarjeta" placeholder="0.00">
     <label>Bizum (€)</label><input type="number" step="0.01" id="iBizum" placeholder="0.00">
@@ -1394,6 +1395,13 @@ function totalFijosMensual(mesKey){
   }, 0);
 }
 function filtrarPorMes(lista, campoFecha){ return lista.filter(x => (x[campoFecha]||'').slice(0,7) === selectedMonth); }
+// Ordena de mas reciente a mas antiguo. A igual fecha, lo ultimo que se apunto sale primero.
+function recientesPrimero(lista, campo){
+  campo = campo || 'fecha';
+  return lista.map((x,i)=>({x,i}))
+    .sort((a,b)=> String(b.x[campo]||'').localeCompare(String(a.x[campo]||'')) || (b.i - a.i))
+    .map(o=>o.x);
+}
 function totalVariablesMes(){ return filtrarPorMes(state.gastosVariables,'fecha').reduce((s,g)=>s+Number(g.monto),0); }
 function totalIngresosMes(){ return filtrarPorMes(state.ingresos,'fecha').reduce((s,g)=>s+Number(g.monto),0); }
 function totalFiadosPendiente(){ return state.fiados.reduce((s,f)=>s+Number(f.monto),0); }
@@ -1534,7 +1542,7 @@ function renderGastos(){
   }).join('');
   document.getElementById('totalFijos').textContent = euros(totalFijosMensual());
 
-  const vars = filtrarPorMes(state.gastosVariables,'fecha').sort((a,b)=> b.fecha.localeCompare(a.fecha));
+  const vars = recientesPrimero(filtrarPorMes(state.gastosVariables,'fecha'));
   const lv = document.getElementById('listaVariables');
   document.getElementById('emptyVariables').style.display = vars.length? 'none':'block';
   const porDia = {};
@@ -1654,7 +1662,7 @@ function abrirFacturas(){
   document.getElementById('facturasTotalPendiente').textContent = euros(totalPendiente);
 
   document.getElementById('emptyFacturasPendientes').style.display = pendientes.length? 'none':'block';
-  document.getElementById('listaFacturasPendientes').innerHTML = pendientes.sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(f=>`
+  document.getElementById('listaFacturasPendientes').innerHTML = recientesPrimero(pendientes).map(f=>`
     <div class="fila" onclick="abrirDetalleFactura('${f.id}')" style="cursor:pointer;">
       <div class="nombre">${f.proveedor||'Sin proveedor'}<small>${f.concepto} · ${formatearFecha(f.fecha)}</small></div>
       <div class="monto rojo">${euros(saldoFactura(f))}</div>
@@ -1662,7 +1670,7 @@ function abrirFacturas(){
   `).join('');
 
   document.getElementById('emptyFacturasPagadas').style.display = pagadas.length? 'none':'block';
-  document.getElementById('listaFacturasPagadas').innerHTML = pagadas.sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(f=>`
+  document.getElementById('listaFacturasPagadas').innerHTML = recientesPrimero(pagadas).map(f=>`
     <div class="fila" onclick="abrirDetalleFactura('${f.id}')" style="cursor:pointer;">
       <div class="nombre">${f.proveedor||'Sin proveedor'}<small>${f.concepto} · ${formatearFecha(f.fecha)}</small></div>
       <div class="monto verde">${euros(f.montoTotal)}</div>
@@ -1679,7 +1687,7 @@ function abrirDetalleFactura(id){
   document.getElementById('dfacPendiente').textContent = euros(saldoFactura(f));
   document.getElementById('dfacTotal').textContent = euros(f.montoTotal);
   document.getElementById('dfacInfo').textContent = f.concepto + ' · ' + formatearFecha(f.fecha);
-  const hist = [...(f.historialPagos||[])].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const hist = recientesPrimero(f.historialPagos||[]);
   document.getElementById('dfacHistorialVacio').style.display = hist.length? 'none':'block';
   document.getElementById('dfacHistorial').innerHTML = hist.map(p=>{
     const metodo = metodoPagoFactura(p);
@@ -2077,7 +2085,7 @@ function guardarVencimientoFijo(){
 }
 
 function renderIngresos(){
-  const items = filtrarPorMes(state.ingresos,'fecha').sort((a,b)=> b.fecha.localeCompare(a.fecha));
+  const items = recientesPrimero(filtrarPorMes(state.ingresos,'fecha'));
   document.getElementById('emptyIngresos').style.display = items.length? 'none':'block';
   document.getElementById('listaIngresos').innerHTML = items.map(x=>{
     const d = x.desglose;
@@ -2104,7 +2112,7 @@ function renderResumenDia(){
   const cont = document.getElementById('resumenDiaContenido');
   if(!fecha){ cont.innerHTML = ''; return; }
   const ingresosDia = state.ingresos.filter(x=>x.fecha===fecha);
-  const gastosDia = state.gastosVariables.filter(x=>x.fecha===fecha);
+  const gastosDia = recientesPrimero(state.gastosVariables.filter(x=>x.fecha===fecha));
   const gastosCajaDia = gastosDia.filter(g=>g.origen!=='acumulado');
   const gastosAcumuladoDia = gastosDia.filter(g=>g.origen==='acumulado');
   const efectivo = ingresosDia.reduce((s,x)=>s+Number(x.desglose?.efectivo||0),0);
@@ -2119,6 +2127,7 @@ function renderResumenDia(){
       if(h.fecha===fecha) fiadosDia.push({cliente:f.cliente, tipo:h.tipo, monto:h.monto, nota:h.nota});
     });
   });
+  fiadosDia.reverse(); // lo ultimo apuntado, primero
 
   const efectivoTotalGenerado = gastosEfectivo + efectivo;
   const neto = efectivo + tarjeta + bizum;
@@ -2283,7 +2292,7 @@ function renderDiasFiado(){
   const dias = Object.keys(porDia).sort((a,b)=>b.localeCompare(a));
   document.getElementById('emptyDiasFiado').style.display = dias.length? 'none':'block';
   document.getElementById('listaDiasFiado').innerHTML = dias.map(fecha=>{
-    const movs = porDia[fecha];
+    const movs = [...porDia[fecha]].reverse(); // dentro del dia, lo ultimo apuntado primero
     const nuevo = movs.filter(m=>m.tipo==='deuda').reduce((s,m)=>s+Number(m.monto),0);
     const cobrado = movs.filter(m=>m.tipo==='pago').reduce((s,m)=>s+Number(m.monto),0);
     const idDia = 'dia-fiado-'+fecha;
@@ -2315,7 +2324,7 @@ function renderPrestamo(){
   interesEl.textContent = Number(p.interes||0) > 0
     ? euros(p.montoInicial)+' prestados + '+euros(p.interes)+' de interés = '+euros(total)+' en '+Math.ceil(total/p.cuotaDiaria)+' pagos de '+euros(p.cuotaDiaria)
     : 'Sin interés — '+euros(total)+' en pagos de '+euros(p.cuotaDiaria);
-  const pagos = [...p.pagos].sort((a,b)=> b.fecha.localeCompare(a.fecha));
+  const pagos = recientesPrimero(p.pagos);
   document.getElementById('emptyPrestamo').style.display = pagos.length? 'none':'block';
   document.getElementById('listaPagosPrestamo').innerHTML = pagos.map(x=>
     swipeRow(`<div class="fila" onclick="editarPagoPrestamo('${x.id}')" style="cursor:pointer;"><div class="nombre">${formatearFecha(x.fecha)}</div><div class="monto verde">${euros(x.monto)}</div></div>`, `borrarPagoPrestamo('${x.id}')`)
@@ -2360,7 +2369,7 @@ function renderAhorro(){
   const listo = a.ahorrado >= a.objetivo;
   document.getElementById('celebracionAlquiler').style.display = listo ? 'block' : 'none';
   document.getElementById('ahorroObjetivoBox').className = 'kpi ' + (listo ? 'pos' : 'info');
-  const movimientos = [...(a.aportaciones||[])].sort((x,y)=> y.fecha.localeCompare(x.fecha));
+  const movimientos = recientesPrimero(a.aportaciones||[]);
   document.getElementById('emptyAhorro').style.display = movimientos.length? 'none':'block';
   document.getElementById('listaAportacionesAhorro').innerHTML = movimientos.map(x=>{
     const esRetiro = x.tipo==='retiro';
@@ -2809,23 +2818,49 @@ function borrarVariable(id){
 }
 
 let ingresoEditandoId = null;
+// Solo hay un ingreso de caja por dia. Los cobros de fiado que se suman a ingresos
+// van aparte y pueden ser varios, por eso se distinguen.
+function esIngresoDeFiado(x){ return x.vinculado==='fiado' || (x.nota||'').startsWith('Cobro fiado:'); }
+function ingresoDelDia(fecha, excluirId){
+  const lista = state.ingresos.filter(x=>x.fecha===fecha && !esIngresoDeFiado(x) && x.id!==excluirId);
+  return lista.length ? lista[lista.length-1] : null;
+}
+function rellenarFormIngreso(x){
+  document.getElementById('iFecha').value = x.fecha;
+  document.getElementById('iEfectivo').value = x.desglose?.efectivo || '';
+  document.getElementById('iTarjeta').value = x.desglose?.tarjeta || '';
+  document.getElementById('iBizum').value = x.desglose?.bizum || '';
+  document.getElementById('iNota').value = x.nota || '';
+}
 function abrirFormIngreso(id){
+  // si el ingreso de hoy ya esta apuntado, se abre ese para modificarlo en vez de crear otro
+  if(!id){ const deHoy = ingresoDelDia(fechaHoyISO()); if(deHoy) id = deHoy.id; }
   ingresoEditandoId = id || null;
+  const aviso = document.getElementById('iAviso');
   if(id){
-    const x = state.ingresos.find(i=>i.id===id);
-    document.getElementById('iFecha').value = x.fecha;
-    document.getElementById('iEfectivo').value = x.desglose?.efectivo || '';
-    document.getElementById('iTarjeta').value = x.desglose?.tarjeta || '';
-    document.getElementById('iBizum').value = x.desglose?.bizum || '';
-    document.getElementById('iNota').value = x.nota || '';
+    rellenarFormIngreso(state.ingresos.find(i=>i.id===id));
+    document.getElementById('iTitulo').textContent = 'Modificar ingreso del día';
+    aviso.textContent = 'Este día ya tenía un ingreso apuntado: lo que guardes lo sustituye, no se crea otro.';
   } else {
     document.getElementById('iFecha').value = fechaHoyISO();
     document.getElementById('iEfectivo').value='';
     document.getElementById('iTarjeta').value='';
     document.getElementById('iBizum').value='';
     document.getElementById('iNota').value='';
+    document.getElementById('iTitulo').textContent = 'Ingreso del día';
+    aviso.textContent = '';
   }
   abrirOverlay('overlayIngreso');
+}
+function onCambioFechaIngreso(){
+  // al cambiar de dia, si ese dia ya tiene ingreso se carga para modificarlo en vez de duplicarlo
+  const fecha = document.getElementById('iFecha').value;
+  const existente = ingresoDelDia(fecha, ingresoEditandoId);
+  if(!existente) return;
+  ingresoEditandoId = existente.id;
+  rellenarFormIngreso(existente);
+  document.getElementById('iTitulo').textContent = 'Modificar ingreso del día';
+  document.getElementById('iAviso').textContent = 'Ese día ya tenía un ingreso apuntado: se ha cargado para que lo modifiques.';
 }
 function guardarIngreso(){
   const fecha = document.getElementById('iFecha').value;
@@ -2835,6 +2870,12 @@ function guardarIngreso(){
   const nota = document.getElementById('iNota').value.trim();
   const monto = efectivo + tarjeta + bizum;
   if(!fecha || !monto){ alert('Rellena la fecha y al menos un importe.'); return; }
+  // red de seguridad: si otro movil apunto ese dia mientras tanto, no duplicar
+  const existente = ingresoDelDia(fecha, ingresoEditandoId);
+  if(existente){
+    if(!confirm('Ya hay un ingreso apuntado el '+formatearFecha(fecha)+' ('+euros(existente.monto)+'). ¿Sustituirlo por estos datos?')) return;
+    ingresoEditandoId = existente.id;
+  }
   if(ingresoEditandoId){
     const x = state.ingresos.find(i=>i.id===ingresoEditandoId);
     if(x){ x.fecha=fecha; x.monto=monto; x.nota=nota; x.desglose={efectivo,tarjeta,bizum}; }
@@ -2877,7 +2918,7 @@ function abrirDetalleFiado(id){
   document.getElementById('dfPagadoTotal').textContent = euros(totalPagado);
   const contactoPartes = [f.telefono, f.nota].filter(Boolean);
   document.getElementById('dfContacto').textContent = contactoPartes.length ? contactoPartes.join(' · ') : 'Sin teléfono ni nota guardados.';
-  const hist = [...(f.historial||[])].sort((a,b)=> b.fecha.localeCompare(a.fecha));
+  const hist = recientesPrimero(f.historial||[]);
   document.getElementById('dfHistorialVacio').style.display = hist.length? 'none':'block';
   document.getElementById('dfHistorial').innerHTML = hist.map(h=>
     swipeRow(`<div class="fila" onclick="editarMovimientoFiado('${h.id}')" style="cursor:pointer;"><div class="nombre">${formatearFecha(h.fecha)}${h.tipo==='deuda'?'<small>Nueva compra fiada'+(h.nota?': '+h.nota:'')+'</small>':'<small>Pago recibido</small>'}</div><div class="monto ${h.tipo==='deuda'?'rojo':'verde'}">${h.tipo==='deuda'?'+':'-'}${euros(h.monto)}</div></div>`, `borrarMovimientoFiado('${h.id}')`)
@@ -2991,7 +3032,7 @@ function guardarPagoFiado(){
     if(sumarIngreso){
       const desglose = {efectivo:0, tarjeta:0, bizum:0};
       desglose[metodo] = monto;
-      state.ingresos.push({id:cid(), fecha:fechaHoyISO(), monto, nota:'Cobro fiado: '+f.cliente, desglose});
+      state.ingresos.push({id:cid(), fecha:fechaHoyISO(), monto, nota:'Cobro fiado: '+f.cliente, desglose, vinculado:'fiado'});
     }
   }
   guardarEnNube(); cerrarOverlay('overlayPagoFiado'); render();
