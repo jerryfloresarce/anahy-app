@@ -480,7 +480,12 @@
       <p style="font-size:0.72rem; color:var(--tinta-suave); margin-top:10px;">Los avisos se activan en Ajustes ⚙️ y solo pueden sonar mientras la app está abierta. Para no olvidarlo con la app cerrada, lo más seguro son dos alarmas del móvil: a las 9:00 y a la hora de cierre.</p>
     </div>
     <div class="card">
-      <h2>Calendario del mes <span class="badge">toca un día para ver o cambiar sus horas</span></h2>
+      <h2>Calendario <span class="badge">toca un día para ver o cambiar sus horas</span></h2>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin:4px 0 10px 0; font-family:'Segoe UI',sans-serif;">
+        <button class="btn secundario" style="width:44px; padding:8px 0; font-size:1.1rem;" onclick="cambiarMes(-1)">‹</button>
+        <div id="jorMesLabel" style="font-weight:700; font-size:1rem; text-transform:capitalize;">—</div>
+        <button class="btn secundario" style="width:44px; padding:8px 0; font-size:1.1rem;" onclick="cambiarMes(1)">›</button>
+      </div>
       <div id="jorCalendario" style="display:grid; grid-template-columns:repeat(7,1fr); gap:4px; font-family:'Segoe UI',sans-serif;"></div>
     </div>
     <div class="card">
@@ -3139,6 +3144,7 @@ function renderJornada(){
   const porDia = {};
   delMes.forEach(t=>{ if(!porDia[t.fecha]) porDia[t.fecha]=[]; porDia[t.fecha].push(t); });
   const [cy, cm] = selectedMonth.split('-').map(Number);
+  document.getElementById('jorMesLabel').textContent = MESES[cm-1]+' '+cy;
   const primerDia = (new Date(cy, cm-1, 1).getDay() + 6) % 7; // lunes = 0
   const numDias = new Date(cy, cm, 0).getDate();
   let cal = ['L','M','X','J','V','S','D'].map(d=>`<div style="text-align:center; font-size:0.66rem; color:var(--tinta-suave); font-weight:700;">${d}</div>`).join('');
