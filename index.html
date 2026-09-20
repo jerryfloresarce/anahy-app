@@ -480,6 +480,10 @@
       <p style="font-size:0.72rem; color:var(--tinta-suave); margin-top:10px;">Los avisos se activan en Ajustes ⚙️ y solo pueden sonar mientras la app está abierta. Para no olvidarlo con la app cerrada, lo más seguro son dos alarmas del móvil: a las 9:00 y a la hora de cierre.</p>
     </div>
     <div class="card">
+      <h2>Calendario del mes <span class="badge">toca un día para ver o cambiar sus horas</span></h2>
+      <div id="jorCalendario" style="display:grid; grid-template-columns:repeat(7,1fr); gap:4px; font-family:'Segoe UI',sans-serif;"></div>
+    </div>
+    <div class="card">
       <h2 onclick="toggleSeccion('sec-jornada-dias')" style="cursor:pointer; user-select:none;">Días del mes <span class="chev" id="chev-sec-jornada-dias" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
       <div id="sec-jornada-dias" class="collapsible-content">
         <div id="listaJornada"></div>
@@ -1002,6 +1006,20 @@
   </div>
 </div>
 
+<div class="form-overlay" id="overlayDiaJornada">
+  <div class="form-sheet">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="margin:0;" id="djTitulo">Día</h3>
+      <button class="icon-btn" style="font-size:1.4rem;" onclick="cerrarOverlay('overlayDiaJornada')">✕</button>
+    </div>
+    <div class="total-linea" style="margin-top:10px;"><span>Total del día</span><span id="djTotal">0h</span></div>
+    <div id="djLista" style="margin-top:8px;"></div>
+    <div class="empty" id="djVacio" style="display:none;">Este día no hay horas apuntadas.</div>
+    <button class="btn" style="margin-top:14px;" onclick="abrirFormTramo(null, diaJornadaAbierto)">+ Añadir horas de este día</button>
+    <button class="btn secundario" style="margin-top:8px;" onclick="cerrarOverlay('overlayDiaJornada')">Cerrar</button>
+  </div>
+</div>
+
 <div class="form-overlay" id="overlayTramo">
   <div class="form-sheet">
     <h3 id="trTitulo">Apuntar horas</h3>
@@ -1009,6 +1027,7 @@
     <label>Hora de entrada</label><input type="time" id="trInicio">
     <label>Hora de salida <span style="font-weight:400;">(vacío = todavía trabajando)</span></label><input type="time" id="trFin">
     <p style="font-size:0.74rem; color:var(--tinta-suave); margin-top:6px;" id="trDuracion"></p>
+    <label>Nota (opcional)</label><input type="text" id="trNota" placeholder="Ej. salí antes por el médico">
     <div class="form-btns">
       <button class="btn secundario" onclick="cerrarOverlay('overlayTramo')">Cancelar</button>
       <button class="btn" onclick="guardarTramo()">Guardar</button>
@@ -3116,9 +3135,30 @@ function renderJornada(){
   document.getElementById('jorEuros').textContent = euros(minMes/60 * Number(j.tarifaHora||0));
   document.getElementById('jorTarifa').value = j.tarifaHora || '';
 
-  // lista por dia del mes elegido, lo mas reciente primero
+  // calendario del mes elegido: cada dia con sus horas; tocar abre el detalle del dia
   const porDia = {};
-  recientesPrimero(delMes).forEach(t=>{ if(!porDia[t.fecha]) porDia[t.fecha]=[]; porDia[t.fecha].push(t); });
+  delMes.forEach(t=>{ if(!porDia[t.fecha]) porDia[t.fecha]=[]; porDia[t.fecha].push(t); });
+  const [cy, cm] = selectedMonth.split('-').map(Number);
+  const primerDia = (new Date(cy, cm-1, 1).getDay() + 6) % 7; // lunes = 0
+  const numDias = new Date(cy, cm, 0).getDate();
+  let cal = ['L','M','X','J','V','S','D'].map(d=>`<div style="text-align:center; font-size:0.66rem; color:var(--tinta-suave); font-weight:700;">${d}</div>`).join('');
+  for(let i=0;i<primerDia;i++) cal += '<div></div>';
+  for(let d=1; d<=numDias; d++){
+    const fecha = cy+'-'+String(cm).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const ts = porDia[fecha]||[];
+    const min = ts.filter(t=>t.fin).reduce((s,t)=>s+duracionTramo(t),0);
+    const enCurso = ts.some(t=>!t.fin);
+    const conNota = ts.some(t=>t.nota);
+    const esHoy = fecha===hoy;
+    const fondo = enCurso ? 'rgba(244,185,66,0.35)' : (min>0 ? 'rgba(63,164,106,0.18)' : 'var(--crema)');
+    cal += `<div onclick="abrirDiaJornada('${fecha}')" style="cursor:pointer; min-height:46px; border-radius:8px; padding:4px 2px; text-align:center; background:${fondo}; border:${esHoy?'2px solid var(--verde-claro)':'1px solid var(--borde)'};">
+      <div style="font-size:0.78rem; font-weight:${esHoy?'800':'600'};">${d}${conNota?' <span style="font-size:0.6rem;">📝</span>':''}</div>
+      <div style="font-size:0.66rem; color:${min>0||enCurso?'var(--verde-claro)':'var(--tinta-suave)'}; font-weight:700;">${enCurso ? '⏳' : (min>0 ? formatoHoras(min) : '')}</div>
+    </div>`;
+  }
+  document.getElementById('jorCalendario').innerHTML = cal;
+
+  // lista por dia del mes elegido, lo mas reciente primero
   const dias = Object.keys(porDia).sort((a,b)=>b.localeCompare(a));
   document.getElementById('emptyJornada').style.display = dias.length ? 'none' : 'block';
   document.getElementById('listaJornada').innerHTML = dias.map(fecha=>{
@@ -3126,27 +3166,47 @@ function renderJornada(){
     const total = tramos.filter(t=>t.fin).reduce((s,t)=>s+duracionTramo(t),0);
     const dinero = Number(j.tarifaHora||0) ? ' · '+euros(total/60*Number(j.tarifaHora)) : '';
     return `<div style="margin-bottom:12px;">
-      <div style="display:flex; justify-content:space-between; font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.85rem; background:var(--crema-osc); padding:6px 10px; border-radius:8px; margin-bottom:4px;">
+      <div onclick="abrirDiaJornada('${fecha}')" style="cursor:pointer; display:flex; justify-content:space-between; font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.85rem; background:var(--crema-osc); padding:6px 10px; border-radius:8px; margin-bottom:4px;">
         <span>📅 ${formatearFecha(fecha)}</span><span>${formatoHoras(total)}${dinero}</span>
       </div>
-      ${tramos.map(t=>{
-        const fila = `<div class="fila" onclick="abrirFormTramo('${t.id}')" style="cursor:pointer;">
-          <div class="nombre">${t.inicio} → ${t.fin || '<em>en curso</em>'}<small>tocar para editar</small></div>
-          <div class="monto ${t.fin?'verde':''}">${t.fin ? formatoHoras(duracionTramo(t)) : '⏳'}</div>
-        </div>`;
-        return swipeRow(fila, `borrarTramo('${t.id}')`);
-      }).join('')}
+      ${tramos.map(filaTramoHtml).join('')}
     </div>`;
   }).join('');
 }
+function filaTramoHtml(t){
+  const fila = `<div class="fila" onclick="abrirFormTramo('${t.id}')" style="cursor:pointer;">
+    <div class="nombre">${t.inicio} → ${t.fin || '<em>en curso</em>'}<small>${t.nota ? '📝 '+t.nota : 'tocar para editar'}</small></div>
+    <div class="monto ${t.fin?'verde':''}">${t.fin ? formatoHoras(duracionTramo(t)) : '⏳'}</div>
+  </div>`;
+  return swipeRow(fila, `borrarTramo('${t.id}')`);
+}
+let diaJornadaAbierto = null;
+function abrirDiaJornada(fecha){
+  diaJornadaAbierto = fecha;
+  const j = jornadaState();
+  const tramos = j.tramos.filter(t=>t.fecha===fecha).sort((a,b)=> (a.inicio||'').localeCompare(b.inicio||''));
+  const total = tramos.filter(t=>t.fin).reduce((s,t)=>s+duracionTramo(t),0);
+  const dinero = Number(j.tarifaHora||0) ? ' · '+euros(total/60*Number(j.tarifaHora)) : '';
+  const dow = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][new Date(fecha+'T00:00:00').getDay()];
+  document.getElementById('djTitulo').textContent = '📅 '+dow+' '+formatearFecha(fecha);
+  document.getElementById('djTotal').textContent = formatoHoras(total)+dinero;
+  document.getElementById('djVacio').style.display = tramos.length ? 'none' : 'block';
+  document.getElementById('djLista').innerHTML = tramos.map(filaTramoHtml).join('');
+  abrirOverlay('overlayDiaJornada');
+  activarDeslizables();
+}
 let tramoEditandoId = null;
-function abrirFormTramo(id){
+let tramoVolverADia = null;
+function abrirFormTramo(id, fechaSugerida){
   tramoEditandoId = id || null;
+  // si se abre desde el detalle de un dia, al guardar se vuelve a ese detalle
+  tramoVolverADia = document.getElementById('overlayDiaJornada').classList.contains('show') ? diaJornadaAbierto : null;
   const t = id ? jornadaState().tramos.find(x=>x.id===id) : null;
   document.getElementById('trTitulo').textContent = t ? 'Editar horas' : 'Apuntar horas a mano';
-  document.getElementById('trFecha').value = t ? t.fecha : fechaHoyISO();
+  document.getElementById('trFecha').value = t ? t.fecha : (fechaSugerida || fechaHoyISO());
   document.getElementById('trInicio').value = t ? t.inicio : '';
   document.getElementById('trFin').value = t ? (t.fin||'') : '';
+  document.getElementById('trNota').value = t ? (t.nota||'') : '';
   actualizarDuracionForm();
   ['trInicio','trFin'].forEach(k=>document.getElementById(k).oninput = actualizarDuracionForm);
   abrirOverlay('overlayTramo');
@@ -3163,6 +3223,7 @@ function guardarTramo(){
   const fecha = document.getElementById('trFecha').value;
   const inicio = document.getElementById('trInicio').value;
   const fin = document.getElementById('trFin').value || null;
+  const nota = document.getElementById('trNota').value.trim();
   if(!fecha || !inicio){ alert('Indica el día y la hora de entrada.'); return; }
   const j = jornadaState();
   const otroAbierto = j.tramos.find(t=>!t.fin && t.id!==tramoEditandoId);
@@ -3175,16 +3236,18 @@ function guardarTramo(){
   if(solapa){ alert('Esas horas se pisan con otro tramo del mismo día ('+solapa.inicio+' → '+solapa.fin+').'); return; }
   if(tramoEditandoId){
     const t = j.tramos.find(x=>x.id===tramoEditandoId);
-    if(t){ t.fecha=fecha; t.inicio=inicio; t.fin=fin; }
+    if(t){ t.fecha=fecha; t.inicio=inicio; t.fin=fin; t.nota=nota; }
   } else {
-    j.tramos.push({id:cid(), fecha, inicio, fin});
+    j.tramos.push({id:cid(), fecha, inicio, fin, nota});
   }
   guardarEnNube(); cerrarOverlay('overlayTramo'); tramoEditandoId=null; render();
+  if(tramoVolverADia){ abrirDiaJornada(fecha); tramoVolverADia = null; }
 }
 function borrarTramo(id){
   const j = jornadaState();
   j.tramos = j.tramos.filter(t=>t.id!==id);
   guardarEnNube(); render();
+  if(diaJornadaAbierto && document.getElementById('overlayDiaJornada').classList.contains('show')) abrirDiaJornada(diaJornadaAbierto);
 }
 
 // ---- overlays ----
