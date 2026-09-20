@@ -938,7 +938,7 @@
       <button class="btn" onclick="guardarCaducidad()">Guardar</button>
     </div>
     <div id="cdBotonesExtra" style="display:none; margin-top:10px; gap:8px;">
-      <button class="btn secundario" style="background:var(--tinta-suave); color:#fff; border:none;" onclick="marcarProductoRetirado()">🚫 Producto retirado</button>
+      <button class="btn secundario" id="cdBtnRetirar" style="background:var(--tinta-suave); color:#fff; border:none;" onclick="marcarProductoRetirado()">🚫 Producto retirado</button>
       <button class="btn secundario" onclick="marcarProductoRenovado()">🔄 Renovado</button>
     </div>
   </div>
@@ -2704,6 +2704,45 @@ function renderStock(){
 
   document.getElementById('emptyCaducidades').style.display = cads.length? 'none':'block';
 
+  // los retirados van en su propio grupo al final, no mezclados dentro de cada familia
+  const retirados = cads.filter(c=>c.retirado);
+  cads = cads.filter(c=>!c.retirado);
+
+  const tarjeta = c=>{
+    const fechasTexto = c.fechas.map(f=>formatearFecha(f)).join(' · ');
+    const ubicacionHtml = c.ubicacion ? `<div style="font-family:'Segoe UI',sans-serif; font-size:0.78rem; color:var(--tinta-suave); margin-top:2px;">📍 ${c.ubicacion}</div>` : '';
+    if(c.retirado){
+      const fila = `<div class="card" style="padding:12px; margin:0; background:#EDEBE6;" onclick="abrirFormCaducidad('${c.id}')">
+        <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem; color:#6b6b6b;">🚫 ${c.nombre}</div>
+        ${c.ubicacion ? `<div style="font-family:'Segoe UI',sans-serif; font-size:0.78rem; color:#8a8a8a; margin-top:2px;">📍 ${c.ubicacion}</div>` : ''}
+        <div style="font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.9rem; color:#6b6b6b; margin-top:6px; display:flex; align-items:center; gap:6px;">
+          <span style="width:10px; height:10px; border-radius:50%; background:#9a9a9a; display:inline-block;"></span>Retirado${c.retiradoFecha ? ' el '+formatearFecha(c.retiradoFecha) : ''}${c.familia ? ' · '+c.familia : ''}
+        </div>
+        <div style="font-family:'Segoe UI',sans-serif; font-size:0.72rem; color:#9a9a9a; margin-top:3px;">${fechasTexto}</div>
+      </div>`;
+      return swipeRow(fila, `borrarCaducidad('${c.id}')`);
+    }
+    const sem = c.diasMin<3 ? 'rojo' : (c.diasMin<7 ? 'amarillo' : 'verde');
+    const color = c.diasMin<3 ? 'var(--rojo)' : (c.diasMin<7 ? 'var(--papaya-oscuro)' : 'var(--verde-claro)');
+    const textoGrande = c.diasMin<0 ? 'Caducó hace '+Math.abs(c.diasMin)+' '+plural(c.diasMin,'día','días') : (c.diasMin===0 ? 'Caduca hoy' : 'Caduca en '+c.diasMin+' '+plural(c.diasMin,'día','días'));
+    const icono = c.devolucion ? '✅' : '☠️';
+    const fila = `<div class="card" style="padding:12px; margin:0;" onclick="abrirFormCaducidad('${c.id}')">
+      <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem;">${icono} ${c.nombre}</div>
+      ${ubicacionHtml}
+      <div style="font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.9rem; color:${color}; margin-top:6px; display:flex; align-items:center; gap:6px;">
+        <span class="semaforo ${sem}"></span>${textoGrande}
+      </div>
+      <div style="font-family:'Segoe UI',sans-serif; font-size:0.72rem; color:var(--tinta-suave); margin-top:3px;">${fechasTexto}</div>
+    </div>`;
+    return swipeRow(fila, `borrarCaducidad('${c.id}')`);
+  };
+  const grupo = (titulo, idGrupo, productos, abierto, fondo)=>`<div style="margin-bottom:10px;">
+      <div onclick="toggleDiaFiado('${idGrupo}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.9rem; background:${fondo||'var(--crema-osc)'}; padding:9px 12px; border-radius:8px;">
+        <span>${titulo} <span class="chev" style="display:inline-block; font-weight:400;">▾</span></span><span>${productos.length}</span>
+      </div>
+      <div id="${idGrupo}" style="display:${abierto?'block':'none'}; margin-top:4px;">${productos.map(tarjeta).join('')}</div>
+    </div>`;
+
   const porFamilia = {};
   cads.forEach(c=>{
     const fam = c.familia || 'Sin familia';
@@ -2712,54 +2751,25 @@ function renderStock(){
   });
   const nombresFamilias = [...state.familiasCaducidad];
   if(porFamilia['Sin familia'] && !nombresFamilias.includes('Sin familia')) nombresFamilias.push('Sin familia');
+  // una familia borrada de la lista no puede hacer desaparecer sus productos
+  Object.keys(porFamilia).forEach(f=>{ if(!nombresFamilias.includes(f)) nombresFamilias.push(f); });
 
   const autoExpandir = !!q || filtro!=='proximos';
 
-  document.getElementById('listaFamiliasProductos').innerHTML = nombresFamilias.map(fam=>{
+  const htmlFamilias = nombresFamilias.map(fam=>{
     let productos = porFamilia[fam] || [];
     if(!productos.length) return '';
     if(filtro==='az') productos.sort((a,b)=> a.nombre.localeCompare(b.nombre));
     else if(filtro==='lejanos') productos.sort((a,b)=> b.diasMin-a.diasMin);
     else productos.sort((a,b)=>a.diasMin-b.diasMin);
-    productos.sort((a,b)=> (a.retirado?1:0) - (b.retirado?1:0));
-
-    const idFam = 'fam-productos-'+fam.replace(/[^a-zA-Z0-9]/g,'_');
-    const filas = productos.map(c=>{
-      const fechasTexto = c.fechas.map(f=>formatearFecha(f)).join(' · ');
-      const ubicacionHtml = c.ubicacion ? `<div style="font-family:'Segoe UI',sans-serif; font-size:0.78rem; color:var(--tinta-suave); margin-top:2px;">📍 ${c.ubicacion}</div>` : '';
-      if(c.retirado){
-        const fila = `<div class="card" style="padding:12px; margin:0; background:#EDEBE6;" onclick="abrirFormCaducidad('${c.id}')">
-          <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem; color:#6b6b6b;">🚫 ${c.nombre}</div>
-          ${c.ubicacion ? `<div style="font-family:'Segoe UI',sans-serif; font-size:0.78rem; color:#8a8a8a; margin-top:2px;">📍 ${c.ubicacion}</div>` : ''}
-          <div style="font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.9rem; color:#6b6b6b; margin-top:6px; display:flex; align-items:center; gap:6px;">
-            <span style="width:10px; height:10px; border-radius:50%; background:#9a9a9a; display:inline-block;"></span>Retirado
-          </div>
-          <div style="font-family:'Segoe UI',sans-serif; font-size:0.72rem; color:#9a9a9a; margin-top:3px;">${fechasTexto}</div>
-        </div>`;
-        return swipeRow(fila, `borrarCaducidad('${c.id}')`);
-      }
-      const sem = c.diasMin<3 ? 'rojo' : (c.diasMin<7 ? 'amarillo' : 'verde');
-      const color = c.diasMin<3 ? 'var(--rojo)' : (c.diasMin<7 ? 'var(--papaya-oscuro)' : 'var(--verde-claro)');
-      const textoGrande = c.diasMin<0 ? 'Caducó hace '+Math.abs(c.diasMin)+' '+plural(c.diasMin,'día','días') : (c.diasMin===0 ? 'Caduca hoy' : 'Caduca en '+c.diasMin+' '+plural(c.diasMin,'día','días'));
-      const icono = c.devolucion ? '✅' : '☠️';
-      const fila = `<div class="card" style="padding:12px; margin:0;" onclick="abrirFormCaducidad('${c.id}')">
-        <div style="font-family:'Segoe UI',sans-serif; font-weight:600; font-size:0.92rem;">${icono} ${c.nombre}</div>
-        ${ubicacionHtml}
-        <div style="font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.9rem; color:${color}; margin-top:6px; display:flex; align-items:center; gap:6px;">
-          <span class="semaforo ${sem}"></span>${textoGrande}
-        </div>
-        <div style="font-family:'Segoe UI',sans-serif; font-size:0.72rem; color:var(--tinta-suave); margin-top:3px;">${fechasTexto}</div>
-      </div>`;
-      return swipeRow(fila, `borrarCaducidad('${c.id}')`);
-    }).join('');
-
-    return `<div style="margin-bottom:10px;">
-      <div onclick="toggleDiaFiado('${idFam}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.9rem; background:var(--crema-osc); padding:9px 12px; border-radius:8px;">
-        <span>${fam} <span class="chev" style="display:inline-block; font-weight:400;">▾</span></span><span>${productos.length}</span>
-      </div>
-      <div id="${idFam}" style="display:${autoExpandir?'block':'none'}; margin-top:4px;">${filas}</div>
-    </div>`;
+    return grupo(fam, 'fam-productos-'+fam.replace(/[^a-zA-Z0-9]/g,'_'), productos, autoExpandir);
   }).join('');
+
+  // grupo de retirados: los mas recientes primero
+  retirados.sort((a,b)=> String(b.retiradoFecha||'').localeCompare(String(a.retiradoFecha||'')));
+  const htmlRetirados = retirados.length ? grupo('🚫 Retirados', 'fam-productos-retirados', retirados, filtro==='retirados' || !!q, '#E4E1DA') : '';
+
+  document.getElementById('listaFamiliasProductos').innerHTML = htmlFamilias + htmlRetirados;
 
   renderFamiliasLista();
 }
@@ -2805,6 +2815,8 @@ function abrirFormCaducidad(id){
     const fechas = c.fechas && c.fechas.length ? c.fechas : (c.fecha ? [c.fecha] : ['']);
     fechas.forEach(f=>agregarCampoFecha(f));
     document.getElementById('cdBotonesExtra').style.display = 'flex';
+    // el boton dice lo que va a hacer segun el estado actual del producto
+    document.getElementById('cdBtnRetirar').textContent = c.retirado ? '↩️ Volver a poner (está retirado)' : '🚫 Producto retirado';
   } else {
     document.getElementById('cdTitulo').textContent = 'Producto con caducidad';
     document.getElementById('cdNombre').value='';
@@ -2820,6 +2832,10 @@ function abrirFormCaducidad(id){
 function marcarProductoRetirado(){
   const c = state.caducidades.find(x=>x.id===caducidadEditandoId);
   if(c){
+    if(c.retirado){
+      // ya estaba retirado: solo se deshace si se confirma, para no quitarlo sin querer
+      if(!confirm('"'+c.nombre+'" ya está marcado como retirado. ¿Quieres volver a ponerlo como producto activo?')) return;
+    }
     c.retirado = !c.retirado;
     c.retiradoFecha = c.retirado ? fechaHoyISO() : null;
     guardarEnNube();
