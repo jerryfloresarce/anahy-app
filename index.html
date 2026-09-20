@@ -461,6 +461,34 @@
     </div>
   </section>
 
+  <!-- JORNADA (horas de Gaby) -->
+  <section class="tab-panel" id="tab-jornada">
+    <div class="card">
+      <h2>⏱️ Jornada de Gaby</h2>
+      <div id="jorAvisos"></div>
+      <div id="jorEstado" class="empty" style="padding:6px 0 12px 0;"></div>
+      <button class="btn" id="jorBotonPrincipal" onclick="alternarJornada()">▶ Iniciar jornada</button>
+      <div class="kpi-grid tres" style="margin:14px 0 6px 0;">
+        <div class="kpi pos"><div class="label">Hoy</div><div class="valor" id="jorHoy">0h</div></div>
+        <div class="kpi info"><div class="label">Este mes</div><div class="valor" id="jorMes">0h</div></div>
+        <div class="kpi warn"><div class="label">A cobrar</div><div class="valor" id="jorEuros">0€</div></div>
+      </div>
+      <label style="display:flex; align-items:center; gap:8px; font-family:'Segoe UI',sans-serif; font-size:0.85rem; margin-top:8px;">
+        Precio por hora (€)
+        <input type="number" step="0.01" id="jorTarifa" placeholder="0.00" onchange="guardarTarifaJornada(this.value)" style="width:90px; padding:7px; border:1px solid var(--borde); border-radius:8px; font-family:'Segoe UI',sans-serif; background:var(--crema); color:var(--tinta);">
+      </label>
+      <button class="btn secundario" style="margin-top:10px;" id="jorBtnNotif" onclick="activarAvisosJornada()">🔔 Activar avisos en este móvil</button>
+      <p style="font-size:0.72rem; color:var(--tinta-suave); margin-top:6px;">Los avisos de la app solo pueden sonar mientras está abierta. Para no olvidarlo con la app cerrada, lo más seguro son dos alarmas del móvil: a las 9:00 y a la hora de cierre.</p>
+    </div>
+    <div class="card">
+      <h2 onclick="toggleSeccion('sec-jornada-dias')" style="cursor:pointer; user-select:none;">Días del mes <span class="chev" id="chev-sec-jornada-dias" style="margin-left:auto; transition:transform 0.2s;">▾</span></h2>
+      <div id="sec-jornada-dias" class="collapsible-content">
+        <div id="listaJornada"></div>
+        <div class="empty" id="emptyJornada" style="display:none;">Aún no hay horas apuntadas este mes.</div>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <button class="fab-agregar" id="fabAgregar"></button>
@@ -472,6 +500,7 @@
   <button onclick="cambiarTab('fiados')" data-tab="fiados"><span class="ic">📒</span>Fiados</button>
   <button onclick="cambiarTab('prestamo')" data-tab="prestamo"><span class="ic">🤝</span>Préstamo</button>
   <button onclick="cambiarTab('stock')" data-tab="stock"><span class="ic">📦</span>Caducidad</button>
+  <button onclick="cambiarTab('jornada')" data-tab="jornada" style="display:none;"><span class="ic">⏱️</span>Horas</button>
 </nav>
 
 <!-- FORM OVERLAYS -->
@@ -966,6 +995,20 @@
   </div>
 </div>
 
+<div class="form-overlay" id="overlayTramo">
+  <div class="form-sheet">
+    <h3 id="trTitulo">Apuntar horas</h3>
+    <label>Día</label><input type="date" id="trFecha">
+    <label>Hora de entrada</label><input type="time" id="trInicio">
+    <label>Hora de salida <span style="font-weight:400;">(vacío = todavía trabajando)</span></label><input type="time" id="trFin">
+    <p style="font-size:0.74rem; color:var(--tinta-suave); margin-top:6px;" id="trDuracion"></p>
+    <div class="form-btns">
+      <button class="btn secundario" onclick="cerrarOverlay('overlayTramo')">Cancelar</button>
+      <button class="btn" onclick="guardarTramo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="form-overlay" id="overlayNuevoFijo">
   <div class="form-sheet">
     <h3>Nuevo gasto fijo</h3>
@@ -1078,6 +1121,7 @@ function defaultState(){
     ajustes: { apartadosOcultos: [] },
     checklistItems: ['Apagar radio','Apagar ventilador','Guardar frutas y verduras','Hacer conteo de dinero','Encender cámara (refrigerador)','Apagar nevera','Apagar luz de nevera inicio y taparlo','Pasar foto del tiquet final a Ana','Apagar luz de dentro y fuera','Avisar a Ana de alarma'],
     proveedores: ['América','Elías','Dulce sol','Trigo verde','Komkal','Punto cash','Cosmo caix','Pedregosa','Ous aleña','Pacific group','Monbaque','Pepsico','Burriak','Carlos bolsa','Agua Ribes','Asían','Blaysa','Chino','Chocolate Sole','Copral','Daniel alimentación','Dispromon','Distribuidora latinoandina','DK distribución','Oscar honduras','Euro cash','Fageda','Grefusa','Froneri nestle Helados','Grupo América Fox','Grupo mundial','Helado latino','Hielo','Impex latino','Importadora mayzo','Mercabarna','Pan Bimbo','Transporte'],
+    jornada: { tarifaHora: 0, tramos: [] },
     usuarios: {}
   };
 }
@@ -1317,6 +1361,8 @@ function iniciarApp(){
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
+  // avisos de jornada mientras la app este abierta (cada minuto y al volver a ella)
+  setInterval(comprobarAvisosJornada, 60000);
 
   document.addEventListener('visibilitychange', () => {
     if(document.visibilityState === 'visible' && db){
@@ -1328,6 +1374,7 @@ function iniciarApp(){
           for(const k in def){ if(!(k in state)) state[k] = def[k]; }
           setSync(true);
           render();
+          comprobarAvisosJornada();
         }
       }).catch((e)=>{ console.error('No se pudo refrescar al volver', e); });
     }
@@ -1372,6 +1419,7 @@ const APARTADOS = [
 ];
 function apartadoOculto(id){ return !!(state && state.ajustes && (state.ajustes.apartadosOcultos||[]).includes(id)); }
 function tabOculta(tab){
+  if(tab==='jornada') return !puedeVerJornada(); // solo Gaby (y Jerry para consultar)
   const suyos = APARTADOS.filter(a=>a.tab===tab);
   return suyos.length>0 && suyos.every(a=>apartadoOculto(a.id));
 }
@@ -1424,6 +1472,8 @@ function actualizarFabAgregar(){
     fab.style.display='block'; fab.textContent='+ Añadir cliente'; fab.onclick=()=>abrirFormFiado();
   } else if(activeTab==='stock'){
     fab.style.display='block'; fab.textContent='+ Añadir producto'; fab.onclick=()=>abrirFormCaducidad();
+  } else if(activeTab==='jornada'){
+    fab.style.display='block'; fab.textContent='+ Apuntar horas a mano'; fab.onclick=()=>abrirFormTramo();
   } else {
     fab.style.display='none';
   }
@@ -1497,6 +1547,7 @@ function render(){
   if(activeTab==='fiados') renderFiados();
   if(activeTab==='prestamo') renderPrestamo();
   if(activeTab==='stock') renderStock();
+  if(activeTab==='jornada') renderJornada();
   activarDeslizables();
 }
 
@@ -1548,6 +1599,7 @@ function renderResumen(){
     return {texto: icono+' '+c.nombre+' (no se puede devolver) — '+cola, tab:'stock', nivel: caducado?'critico':'atencion', diasMin};
   }).sort((a,b)=> a.diasMin-b.diasMin);
   if(!apartadoOculto('stock')) avisosCaducidad.forEach(a=>avisos.push(a));
+  if(usuarioActual()==='Gaby') recordatoriosJornada().forEach(r=>avisos.push({texto:r.texto, tab:'jornada', nivel: r.nivel==='rojo'?'critico':'atencion'}));
   const pendientesPago = state.gastosFijos.filter(g => !obtenerRegistroFijo(selectedMonth, g).pagado);
   const cardAvisos = document.getElementById('cardAvisos');
   if(avisos.length){
@@ -2916,6 +2968,194 @@ function guardarFamilia(){
 }
 function borrarFamilia(nombre){
   state.familiasCaducidad = state.familiasCaducidad.filter(f=>f!==nombre);
+  guardarEnNube(); render();
+}
+
+// ---- jornada de Gaby: tramos de entrada/salida, varios al dia (horario partido) ----
+function puedeVerJornada(){ return ['Gaby','Jerry'].includes(usuarioActual()); }
+function jornadaState(){
+  if(!state.jornada) state.jornada = { tarifaHora: 0, tramos: [] };
+  if(!state.jornada.tramos) state.jornada.tramos = [];
+  return state.jornada;
+}
+function horaAhora(){ const d = new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function minutosDe(hhmm){ if(!/^\d{2}:\d{2}$/.test(hhmm||'')) return null; const [h,m] = hhmm.split(':').map(Number); return h*60+m; }
+function duracionTramo(t){
+  const a = minutosDe(t.inicio), b = minutosDe(t.fin);
+  if(a===null || b===null) return 0;
+  let d = b - a;
+  if(d < 0) d += 24*60; // salida pasada la medianoche
+  return d;
+}
+function formatoHoras(min){
+  min = Math.max(0, Math.round(min));
+  const h = Math.floor(min/60), m = min%60;
+  return h+'h'+(m ? ' '+String(m).padStart(2,'0')+'m' : '');
+}
+function tramoAbierto(){ return jornadaState().tramos.find(t=>!t.fin) || null; }
+function horaCierreEsperada(fecha){
+  // sabados se cierra un poco mas tarde
+  const dow = new Date(fecha+'T00:00:00').getDay();
+  return dow===6 ? '23:00' : '22:00';
+}
+function alternarJornada(){
+  const j = jornadaState();
+  const abierto = tramoAbierto();
+  const hoy = fechaHoyISO();
+  if(abierto){
+    if(abierto.fecha !== hoy){
+      alert('Hay una jornada del '+formatearFecha(abierto.fecha)+' sin cerrar. Ponle la hora de salida desde la lista antes de empezar otra.');
+      abrirFormTramo(abierto.id);
+      return;
+    }
+    abierto.fin = horaAhora();
+    if(duracionTramo(abierto) < 1){ alert('La salida tiene que ser después de la entrada.'); abierto.fin = null; return; }
+  } else {
+    j.tramos.push({id:cid(), fecha: hoy, inicio: horaAhora(), fin: null});
+  }
+  guardarEnNube(); render();
+}
+function guardarTarifaJornada(v){
+  const n = Number(v);
+  if(isNaN(n) || n < 0){ alert('Indica un precio por hora válido.'); return; }
+  jornadaState().tarifaHora = n;
+  guardarEnNube(); render();
+}
+function recordatoriosJornada(){
+  const j = jornadaState();
+  const hoy = fechaHoyISO();
+  const ahora = minutosDe(horaAhora());
+  const abierto = tramoAbierto();
+  const r = [];
+  if(abierto && abierto.fecha !== hoy){
+    r.push({tipo:'sincerrar', nivel:'rojo', texto:'⏱️ La jornada del '+formatearFecha(abierto.fecha)+' se quedó sin cerrar. Ponle la hora de salida.'});
+    return r;
+  }
+  const deHoy = j.tramos.filter(t=>t.fecha===hoy);
+  if(!deHoy.length && ahora >= minutosDe('09:00') && ahora < minutosDe('21:00')){
+    r.push({tipo:'iniciar', nivel:'amarillo', texto:'⏱️ Son las '+horaAhora()+' y no has iniciado la jornada. Si ya estás trabajando, dale a Iniciar.'});
+  }
+  if(abierto && ahora >= minutosDe(horaCierreEsperada(hoy))){
+    r.push({tipo:'finalizar', nivel:'amarillo', texto:'⏱️ Ya son las '+horaAhora()+'. Si has terminado, dale a Finalizar jornada.'});
+  }
+  return r;
+}
+function activarAvisosJornada(){
+  if(!('Notification' in window)){ alert('Este móvil no permite avisos desde la app. Usa dos alarmas del móvil (9:00 y hora de cierre).'); return; }
+  Notification.requestPermission().then(p=>{
+    if(p==='granted'){ alert('Avisos activados. Sonarán mientras la app esté abierta.'); comprobarAvisosJornada(); renderJornada(); }
+    else alert('No se ha dado permiso para los avisos.');
+  });
+}
+function comprobarAvisosJornada(){
+  if(!state || usuarioActual()!=='Gaby') return;
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  const hoy = fechaHoyISO();
+  recordatoriosJornada().forEach(r=>{
+    const clave = 'anahy-jornada-aviso-'+r.tipo+'-'+hoy;
+    if(localStorage.getItem(clave)) return; // un aviso de cada tipo por dia
+    try{ new Notification('Anahy · Jornada', { body: r.texto.replace('⏱️ ','') }); localStorage.setItem(clave, '1'); } catch(e){}
+  });
+}
+function renderJornada(){
+  const j = jornadaState();
+  const hoy = fechaHoyISO();
+  const abierto = tramoAbierto();
+  const ahora = minutosDe(horaAhora());
+
+  const avisos = recordatoriosJornada();
+  document.getElementById('jorAvisos').innerHTML = avisos.map(a=>`<div class="aviso ${a.nivel==='rojo'?'critico':'atencion'}">${a.texto}</div>`).join('');
+
+  const estado = document.getElementById('jorEstado');
+  const boton = document.getElementById('jorBotonPrincipal');
+  if(abierto && abierto.fecha===hoy){
+    const llevo = ahora - minutosDe(abierto.inicio);
+    estado.innerHTML = 'Jornada <strong>en curso</strong> desde las '+abierto.inicio+' · llevas '+formatoHoras(llevo);
+    boton.textContent = '⏹ Finalizar jornada'; boton.className = 'btn peligro';
+  } else {
+    const deHoy = j.tramos.filter(t=>t.fecha===hoy && t.fin);
+    estado.textContent = deHoy.length ? 'Hoy has hecho '+deHoy.length+(deHoy.length===1?' tramo':' tramos')+'. Si vuelves después de la pausa, inicia otro.' : 'Sin jornada en curso.';
+    boton.textContent = deHoy.length ? '▶ Iniciar otro tramo' : '▶ Iniciar jornada'; boton.className = 'btn';
+  }
+
+  const minHoy = j.tramos.filter(t=>t.fecha===hoy && t.fin).reduce((s,t)=>s+duracionTramo(t),0) + (abierto && abierto.fecha===hoy ? ahora - minutosDe(abierto.inicio) : 0);
+  const delMes = j.tramos.filter(t=>t.fecha.slice(0,7)===selectedMonth);
+  const minMes = delMes.filter(t=>t.fin).reduce((s,t)=>s+duracionTramo(t),0);
+  document.getElementById('jorHoy').textContent = formatoHoras(minHoy);
+  document.getElementById('jorMes').textContent = formatoHoras(minMes);
+  document.getElementById('jorEuros').textContent = euros(minMes/60 * Number(j.tarifaHora||0));
+  document.getElementById('jorTarifa').value = j.tarifaHora || '';
+  const btnNotif = document.getElementById('jorBtnNotif');
+  btnNotif.style.display = (usuarioActual()==='Gaby' && 'Notification' in window && Notification.permission!=='granted') ? '' : 'none';
+
+  // lista por dia del mes elegido, lo mas reciente primero
+  const porDia = {};
+  recientesPrimero(delMes).forEach(t=>{ if(!porDia[t.fecha]) porDia[t.fecha]=[]; porDia[t.fecha].push(t); });
+  const dias = Object.keys(porDia).sort((a,b)=>b.localeCompare(a));
+  document.getElementById('emptyJornada').style.display = dias.length ? 'none' : 'block';
+  document.getElementById('listaJornada').innerHTML = dias.map(fecha=>{
+    const tramos = porDia[fecha].slice().sort((a,b)=> (a.inicio||'').localeCompare(b.inicio||''));
+    const total = tramos.filter(t=>t.fin).reduce((s,t)=>s+duracionTramo(t),0);
+    const dinero = Number(j.tarifaHora||0) ? ' · '+euros(total/60*Number(j.tarifaHora)) : '';
+    return `<div style="margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; font-family:'Segoe UI',sans-serif; font-weight:700; font-size:0.85rem; background:var(--crema-osc); padding:6px 10px; border-radius:8px; margin-bottom:4px;">
+        <span>📅 ${formatearFecha(fecha)}</span><span>${formatoHoras(total)}${dinero}</span>
+      </div>
+      ${tramos.map(t=>{
+        const fila = `<div class="fila" onclick="abrirFormTramo('${t.id}')" style="cursor:pointer;">
+          <div class="nombre">${t.inicio} → ${t.fin || '<em>en curso</em>'}<small>tocar para editar</small></div>
+          <div class="monto ${t.fin?'verde':''}">${t.fin ? formatoHoras(duracionTramo(t)) : '⏳'}</div>
+        </div>`;
+        return swipeRow(fila, `borrarTramo('${t.id}')`);
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+let tramoEditandoId = null;
+function abrirFormTramo(id){
+  tramoEditandoId = id || null;
+  const t = id ? jornadaState().tramos.find(x=>x.id===id) : null;
+  document.getElementById('trTitulo').textContent = t ? 'Editar horas' : 'Apuntar horas a mano';
+  document.getElementById('trFecha').value = t ? t.fecha : fechaHoyISO();
+  document.getElementById('trInicio').value = t ? t.inicio : '';
+  document.getElementById('trFin').value = t ? (t.fin||'') : '';
+  actualizarDuracionForm();
+  ['trInicio','trFin'].forEach(k=>document.getElementById(k).oninput = actualizarDuracionForm);
+  abrirOverlay('overlayTramo');
+}
+function actualizarDuracionForm(){
+  const t = {inicio: document.getElementById('trInicio').value, fin: document.getElementById('trFin').value};
+  const el = document.getElementById('trDuracion');
+  if(!t.inicio){ el.textContent = ''; return; }
+  if(!t.fin){ el.textContent = 'Sin hora de salida: quedará como jornada en curso.'; return; }
+  const d = duracionTramo(t);
+  el.textContent = 'Son '+formatoHoras(d)+(minutosDe(t.fin) < minutosDe(t.inicio) ? ' (la salida es pasada la medianoche)' : '')+'.';
+}
+function guardarTramo(){
+  const fecha = document.getElementById('trFecha').value;
+  const inicio = document.getElementById('trInicio').value;
+  const fin = document.getElementById('trFin').value || null;
+  if(!fecha || !inicio){ alert('Indica el día y la hora de entrada.'); return; }
+  const j = jornadaState();
+  const otroAbierto = j.tramos.find(t=>!t.fin && t.id!==tramoEditandoId);
+  if(!fin && otroAbierto){ alert('Ya hay una jornada en curso ('+formatearFecha(otroAbierto.fecha)+' '+otroAbierto.inicio+'). Ciérrala antes de dejar otra abierta.'); return; }
+  if(fin && duracionTramo({inicio, fin}) < 1){ alert('La salida tiene que ser después de la entrada.'); return; }
+  if(fin && duracionTramo({inicio, fin}) > 16*60 && !confirm('Son más de 16 horas seguidas. ¿Es correcto?')) return;
+  // que no se pise con otro tramo del mismo dia
+  const a1 = minutosDe(inicio), b1 = fin ? a1 + duracionTramo({inicio, fin}) : a1 + 1;
+  const solapa = j.tramos.find(t=>t.id!==tramoEditandoId && t.fecha===fecha && t.fin && a1 < minutosDe(t.inicio)+duracionTramo(t) && b1 > minutosDe(t.inicio));
+  if(solapa){ alert('Esas horas se pisan con otro tramo del mismo día ('+solapa.inicio+' → '+solapa.fin+').'); return; }
+  if(tramoEditandoId){
+    const t = j.tramos.find(x=>x.id===tramoEditandoId);
+    if(t){ t.fecha=fecha; t.inicio=inicio; t.fin=fin; }
+  } else {
+    j.tramos.push({id:cid(), fecha, inicio, fin});
+  }
+  guardarEnNube(); cerrarOverlay('overlayTramo'); tramoEditandoId=null; render();
+}
+function borrarTramo(id){
+  const j = jornadaState();
+  j.tramos = j.tramos.filter(t=>t.id!==id);
   guardarEnNube(); render();
 }
 
