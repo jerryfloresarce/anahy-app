@@ -190,6 +190,7 @@
   .aviso{ background: rgba(232,121,45,0.12); border:1px solid rgba(232,121,45,0.35); color: var(--papaya-oscuro); font-family:'Segoe UI',sans-serif; font-size:0.8rem; padding:10px 12px; border-radius:12px; margin-bottom:14px; }
   .aviso.critico{ background: rgba(193,68,59,0.12); border-color: rgba(193,68,59,0.35); color: var(--rojo); }
   .aviso.atencion{ background: rgba(244,185,66,0.18); border-color: rgba(244,185,66,0.55); color: #8A6410; }
+  .aviso.bien{ background: rgba(63,164,106,0.12); border-color: rgba(63,164,106,0.35); color: var(--verde-claro); }
 
   input[type="date"], input[type="month"]{ min-width:0; max-width:100%; box-sizing:border-box; -webkit-appearance:none; appearance:none; }
 </style>
@@ -392,7 +393,7 @@
 
   <!-- PRESTAMO PERSONAL -->
   <section class="tab-panel" id="tab-prestamo">
-    <div class="card">
+    <div class="card" id="cardPrestamo">
       <h2>Préstamo Jerry → mamá</h2>
       <div class="kpi-grid tres" style="margin-bottom:10px;">
         <div class="kpi info"><div class="label">Prestado</div><div class="valor" id="prestInicial">500€</div></div>
@@ -410,7 +411,7 @@
         <div class="empty" id="emptyPrestamo" style="display:none;">Todavía no hay pagos registrados.</div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" id="cardAhorro">
       <h2>🏠 Ahorro alquiler</h2>
       <div id="celebracionAlquiler" style="display:none; text-align:center; padding:14px; background:rgba(63,164,106,0.15); border-radius:10px; margin-bottom:12px; font-family:'Segoe UI',sans-serif; font-weight:700; color:var(--verde-claro);">🎉 Ya puedes pagar el alquiler</div>
       <div class="kpi-grid" style="margin-bottom:10px;">
@@ -578,7 +579,27 @@
     <h3 style="font-size:0.95rem; margin-top:20px;">Facturas</h3>
     <button class="btn secundario" onclick="abrirFacturas()">🧾 Ver facturas de proveedores</button>
 
+    <h3 style="font-size:0.95rem; margin-top:20px;">Revisión</h3>
+    <button class="btn secundario" onclick="abrirRevision()">🩺 Revisar que todo está bien</button>
+    <p style="font-size:0.74rem; color:var(--tinta-suave); margin-top:6px;">Comprueba los datos y te dice si hay algo raro. No cambia nada por sí solo.</p>
+
+    <h3 style="font-size:0.95rem; margin-top:20px;">Apartados visibles</h3>
+    <p style="font-size:0.74rem; color:var(--tinta-suave); margin-top:0;">Desmarca lo que no uséis. Se aplica en todos los móviles. Inicio siempre se ve.</p>
+    <div id="listaApartados"></div>
+
     <button class="btn secundario" style="margin-top:18px;" onclick="cerrarOverlay('overlayAjustes')">Cerrar</button>
+  </div>
+</div>
+
+<div class="form-overlay" id="overlayRevision">
+  <div class="form-sheet">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="margin:0;">🩺 Revisión</h3>
+      <button class="icon-btn" style="font-size:1.4rem;" onclick="cerrarOverlay('overlayRevision')">✕</button>
+    </div>
+    <p style="font-size:0.78rem; color:var(--tinta-suave); margin-top:4px;" id="revResumen"></p>
+    <div id="revLista" style="margin-top:10px;"></div>
+    <button class="btn secundario" style="margin-top:14px;" onclick="cerrarOverlay('overlayRevision')">Cerrar</button>
   </div>
 </div>
 
@@ -1054,6 +1075,7 @@ function defaultState(){
     arqueoCaja: {},
     ahorroAlquiler: { objetivo: 918, ahorrado: 425, aportaciones: [] },
     facturas: [],
+    ajustes: { apartadosOcultos: [] },
     checklistItems: ['Apagar radio','Apagar ventilador','Guardar frutas y verduras','Hacer conteo de dinero','Encender cámara (refrigerador)','Apagar nevera','Apagar luz de nevera inicio y taparlo','Pasar foto del tiquet final a Ana','Apagar luz de dentro y fuera','Avisar a Ana de alarma'],
     proveedores: ['América','Elías','Dulce sol','Trigo verde','Komkal','Punto cash','Cosmo caix','Pedregosa','Ous aleña','Pacific group','Monbaque','Pepsico','Burriak','Carlos bolsa','Agua Ribes','Asían','Blaysa','Chino','Chocolate Sole','Copral','Daniel alimentación','Dispromon','Distribuidora latinoandina','DK distribución','Oscar honduras','Euro cash','Fageda','Grefusa','Froneri nestle Helados','Grupo América Fox','Grupo mundial','Helado latino','Hielo','Impex latino','Importadora mayzo','Mercabarna','Pan Bimbo','Transporte'],
     usuarios: {}
@@ -1339,7 +1361,52 @@ async function guardarEnNube(){
   }
 }
 
+// ---- apartados que se pueden ocultar desde Ajustes (vale para todos los moviles) ----
+const APARTADOS = [
+  {id:'ingresos', nombre:'💰 Ingresos', tab:'ingresos'},
+  {id:'gastos',   nombre:'💶 Gastos', tab:'gastos'},
+  {id:'fiados',   nombre:'📒 Fiados', tab:'fiados'},
+  {id:'prestamo', nombre:'🤝 Préstamo Jerry → mamá', tab:'prestamo', card:'cardPrestamo'},
+  {id:'alquiler', nombre:'🏠 Ahorro alquiler', tab:'prestamo', card:'cardAhorro'},
+  {id:'stock',    nombre:'📦 Caducidad', tab:'stock'}
+];
+function apartadoOculto(id){ return !!(state && state.ajustes && (state.ajustes.apartadosOcultos||[]).includes(id)); }
+function tabOculta(tab){
+  const suyos = APARTADOS.filter(a=>a.tab===tab);
+  return suyos.length>0 && suyos.every(a=>apartadoOculto(a.id));
+}
+function aplicarApartados(){
+  if(!state) return;
+  APARTADOS.forEach(a=>{
+    if(!a.card) return;
+    const el = document.getElementById(a.card);
+    if(el) el.style.display = apartadoOculto(a.id) ? 'none' : '';
+  });
+  document.querySelectorAll('nav.bottom button').forEach(b=>{ b.style.display = tabOculta(b.dataset.tab) ? 'none' : ''; });
+  // si solo queda el alquiler, la pestaña se llama asi
+  const btnPrest = document.querySelector('nav.bottom button[data-tab="prestamo"]');
+  if(btnPrest){
+    const soloAlquiler = apartadoOculto('prestamo') && !apartadoOculto('alquiler');
+    btnPrest.innerHTML = soloAlquiler ? '<span class="ic">🏠</span>Alquiler' : '<span class="ic">🤝</span>Préstamo';
+  }
+}
+function renderListaApartados(){
+  const cont = document.getElementById('listaApartados');
+  if(!cont) return;
+  cont.innerHTML = APARTADOS.map(a=>`<label style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px dashed var(--borde); font-size:0.9rem; margin:0;">
+    <input type="checkbox" style="width:auto;" ${apartadoOculto(a.id)?'':'checked'} onchange="toggleApartado('${a.id}', this.checked)"> ${a.nombre}</label>`).join('');
+}
+function toggleApartado(id, visible){
+  if(!state.ajustes) state.ajustes = {};
+  let ocultos = state.ajustes.apartadosOcultos || [];
+  ocultos = visible ? ocultos.filter(x=>x!==id) : (ocultos.includes(id) ? ocultos : [...ocultos, id]);
+  state.ajustes.apartadosOcultos = ocultos;
+  guardarEnNube();
+  cambiarTab(activeTab); // si la pestaña actual se ha ocultado, vuelve a Inicio; y repinta
+}
+
 function cambiarTab(tab){
+  if(tabOculta(tab)) tab = 'resumen'; // un apartado oculto no se abre ni desde los avisos
   activeTab = tab;
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
@@ -1421,6 +1488,9 @@ function render(){
   const [y,m] = selectedMonth.split('-').map(Number);
   document.getElementById('mesLabel').textContent = MESES[m-1] + ' ' + y;
 
+  aplicarApartados();
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id==='tab-'+activeTab));
+  document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.toggle('active', b.dataset.tab===activeTab));
   if(activeTab==='resumen') renderResumen();
   if(activeTab==='gastos') renderGastos();
   if(activeTab==='ingresos') renderIngresos();
@@ -1451,6 +1521,9 @@ function renderResumen(){
   balBox.className = 'kpi ' + (balance>=0?'pos':'neg');
   document.getElementById('kpiBalance').textContent = euros(balance);
   document.getElementById('kpiFiados').textContent = euros(totalFiadosPendiente());
+  // los apartados ocultos tampoco muestran su resumen en Inicio
+  document.getElementById('kpiFiados').parentElement.style.display = apartadoOculto('fiados') ? 'none' : '';
+  document.getElementById('kpiStockBox').style.display = apartadoOculto('stock') ? 'none' : '';
 
   const hoyCad0 = new Date(); hoyCad0.setHours(0,0,0,0);
   // los ya retirados no cuentan: de esos ya os habeis ocupado
@@ -1474,7 +1547,7 @@ function renderResumen(){
       : (diasMin===0 ? 'Caduca hoy' : 'Caduca en '+diasMin+' '+plural(diasMin,'día','días'));
     return {texto: icono+' '+c.nombre+' (no se puede devolver) — '+cola, tab:'stock', nivel: caducado?'critico':'atencion', diasMin};
   }).sort((a,b)=> a.diasMin-b.diasMin);
-  avisosCaducidad.forEach(a=>avisos.push(a));
+  if(!apartadoOculto('stock')) avisosCaducidad.forEach(a=>avisos.push(a));
   const pendientesPago = state.gastosFijos.filter(g => !obtenerRegistroFijo(selectedMonth, g).pagado);
   const cardAvisos = document.getElementById('cardAvisos');
   if(avisos.length){
@@ -2029,7 +2102,117 @@ function borrarItemChecklist(i){
 
 function abrirAjustes(){
   document.getElementById('ajIdentidadActual').textContent = usuarioActual() || 'Sin identificar';
+  renderListaApartados();
   abrirOverlay('overlayAjustes');
+}
+
+// ---- revision: comprobaciones fijas sobre los datos, solo informa, no cambia nada ----
+function revisarDatos(){
+  const h = [];
+  const add = (nivel, texto, tab) => h.push({nivel, texto, tab});
+  const hoy = fechaHoyISO();
+  const hoyD = new Date(); hoyD.setHours(0,0,0,0);
+  const dias = f => Math.round((new Date(f+'T00:00:00') - hoyD) / 86400000);
+  const fechaOk = f => /^\d{4}-\d{2}-\d{2}$/.test(f||'');
+  const lista = (arr, n) => arr.slice(0,n).join(', ') + (arr.length>n ? ' y '+(arr.length-n)+' más' : '');
+
+  // conexion
+  if(document.getElementById('syncDot').classList.contains('off')) add('rojo', 'Ahora mismo no hay conexión con la nube: lo que apuntes puede no guardarse hasta que vuelva.');
+
+  // espacio
+  const pct = JSON.stringify(state).length / 1048576 * 100;
+  if(pct > 80) add('rojo', 'Los datos ocupan el '+pct.toFixed(0)+'% del espacio. Avisa a Jerry: hay que archivar años antiguos antes de que deje de guardar.');
+  else if(pct > 60) add('amarillo', 'Los datos ocupan ya el '+pct.toFixed(0)+'% del espacio. Sin prisa, pero avisa a Jerry.');
+  else add('ok', 'Espacio de datos: '+pct.toFixed(1)+'% usado, de sobra.');
+  const nFotos = Object.keys(state.fotosResumenDia||{}).length;
+  if(nFotos) add('rojo', nFotos+' foto(s) guardadas en el sitio antiguo, ocupan muchísimo. Avisa a Jerry para moverlas.');
+
+  // fechas raras
+  const sinFecha = [...state.ingresos, ...state.gastosVariables, ...(state.prestamoPersonal.pagos||[])].filter(x=>!fechaOk(x.fecha)).length;
+  if(sinFecha) add('rojo', sinFecha+' apunte(s) con la fecha vacía o mal escrita. Hay que corregirlos.');
+
+  // ingresos
+  const porDiaIng = {};
+  state.ingresos.filter(x=>!esIngresoDeFiado(x)).forEach(x=>{ porDiaIng[x.fecha]=(porDiaIng[x.fecha]||0)+1; });
+  const dupIng = Object.keys(porDiaIng).filter(f=>porDiaIng[f]>1).sort();
+  if(dupIng.length) add('amarillo', dupIng.length+' día(s) con más de un ingreso de caja ('+lista(dupIng.map(formatearFecha),4)+'). Comprueba que no esté contado dos veces.', 'ingresos');
+  const descuadrados = state.ingresos.filter(x=>x.desglose && Math.abs(Number(x.monto) - (Number(x.desglose.efectivo||0)+Number(x.desglose.tarjeta||0)+Number(x.desglose.bizum||0))) > 0.01);
+  if(descuadrados.length) add('amarillo', descuadrados.length+' ingreso(s) cuyo total no coincide con efectivo + tarjeta + bizum ('+lista(descuadrados.map(x=>formatearFecha(x.fecha)),3)+').', 'ingresos');
+  const faltan = [];
+  for(let i=1;i<=7;i++){ const d=new Date(hoyD); d.setDate(d.getDate()-i); if(d.getDay()===0) continue; const f=fechaISO(d); if(!state.ingresos.some(x=>x.fecha===f)) faltan.push(f); }
+  if(faltan.length) add('amarillo', 'Días de la última semana sin ingreso apuntado: '+faltan.map(formatearFecha).join(', ')+'.', 'ingresos');
+
+  // prestamo
+  const p = state.prestamoPersonal;
+  if(!apartadoOculto('prestamo')){
+    const porDiaP = {};
+    (p.pagos||[]).forEach(x=>{ porDiaP[x.fecha]=(porDiaP[x.fecha]||0)+1; });
+    const dupP = Object.keys(porDiaP).filter(f=>porDiaP[f]>1).sort();
+    if(dupP.length) add('amarillo', 'Préstamo: '+dupP.length+' día(s) con dos pagos apuntados ('+lista(dupP.map(formatearFecha),4)+'). Suele ser el pago del día anterior apuntado con la fecha de hoy.', 'prestamo');
+    const domingos = (p.pagos||[]).filter(x=>fechaOk(x.fecha) && new Date(x.fecha+'T00:00:00').getDay()===0);
+    if(domingos.length) add('amarillo', 'Préstamo: '+domingos.length+' pago(s) apuntados en domingo ('+lista(domingos.map(x=>formatearFecha(x.fecha)),4)+'). Comprueba la fecha.', 'prestamo');
+    if(Number(p.saldo) > totalADevolver(p) + 0.01) add('rojo', 'Préstamo: el saldo pendiente ('+euros(p.saldo)+') es mayor que el total a devolver ('+euros(totalADevolver(p))+').', 'prestamo');
+  }
+
+  // facturas <-> gastos
+  const idsGastos = new Set(state.gastosVariables.map(g=>g.id));
+  let pagosSinGasto = 0;
+  const idsPagosFact = new Set();
+  state.facturas.forEach(f=>(f.historialPagos||[]).forEach(pg=>{
+    const ids = gastosDePagoFactura(pg);
+    ids.forEach(i=>idsPagosFact.add(i));
+    if(ids.length && !ids.every(i=>idsGastos.has(i))) pagosSinGasto++;
+  }));
+  if(pagosSinGasto) add('amarillo', pagosSinGasto+' pago(s) de factura cuyo gasto ya no está en Gastos (se borró a mano). Abre el pago, dale a guardar y se recrea.');
+  const huerfanos = state.gastosVariables.filter(g=>g.vinculado==='factura' && !idsPagosFact.has(g.id));
+  if(huerfanos.length) add('amarillo', huerfanos.length+' gasto(s) de "pago de factura" cuya factura ya no existe ('+lista(huerfanos.map(g=>formatearFecha(g.fecha)+' '+euros(g.monto)),3)+'). Están contando como gasto.', 'gastos');
+
+  // fiados
+  const negativos = state.fiados.filter(f=>Number(f.monto) < 0);
+  if(negativos.length) add('rojo', 'Clientes de fiado con deuda negativa: '+lista(negativos.map(f=>f.cliente),4)+'.', 'fiados');
+  const aCero = state.fiados.filter(f=>Number(f.monto) === 0);
+  if(aCero.length) add('ok', aCero.length+' cliente(s) de fiado ya a 0€ ('+lista(aCero.map(f=>f.cliente),4)+'). Puedes borrarlos si no volverán a fiar.', 'fiados');
+
+  // caducidad
+  const cads = state.caducidades||[];
+  const cadViejos = cads.filter(c=>!c.retirado && (c.fechas||[]).length && Math.min(...c.fechas.map(dias)) < -7);
+  if(cadViejos.length) add('rojo', cadViejos.length+' producto(s) caducados hace más de una semana y sin marcar como retirados: '+lista(cadViejos.map(c=>c.nombre),4)+'.', 'stock');
+  const sinFechas = cads.filter(c=>!(c.fechas||[]).length);
+  if(sinFechas.length) add('amarillo', sinFechas.length+' producto(s) sin ninguna fecha de caducidad ('+lista(sinFechas.map(c=>c.nombre),3)+').', 'stock');
+  const retiradosViejos = cads.filter(c=>c.retirado && c.retiradoFecha && dias(c.retiradoFecha) < -90);
+  if(retiradosViejos.length) add('ok', retiradosViejos.length+' producto(s) retirados hace más de 3 meses. Puedes borrarlos para aligerar la lista.', 'stock');
+
+  // gastos fijos con fecha pasada
+  const mesActual = hoy.slice(0,7);
+  const diaHoy = Number(hoy.slice(8,10));
+  const vencidos = state.gastosFijos.filter(g=>g.diaVenc && g.diaVenc < diaHoy && !obtenerRegistroFijo(mesActual, g).pagado);
+  if(vencidos.length) add('amarillo', 'Gastos fijos de este mes con el día ya pasado y sin marcar como pagados: '+lista(vencidos.map(g=>g.nombre+' (día '+g.diaVenc+')'),4)+'.', 'gastos');
+
+  // cierre de caja
+  const descuadres = Object.keys(state.arqueoCaja||{}).filter(f=>fechaOk(f) && dias(f) >= -7).map(f=>{
+    const a = state.arqueoCaja[f]; let tot = 0;
+    Object.keys(a.monedas||{}).forEach(d=>{ tot += Number(d)*Number(a.monedas[d]); });
+    return {f, d: tot - Number(a.efectivoX||0)};
+  }).filter(x=>Math.abs(x.d) > 20);
+  if(descuadres.length) add('amarillo', 'Cierre de caja con descuadre de más de 20€: '+descuadres.map(x=>formatearFecha(x.f)+' ('+euros(x.d)+')').join(', ')+'.');
+
+  return h;
+}
+function abrirRevision(){
+  cerrarOverlay('overlayAjustes');
+  const h = revisarDatos();
+  const rojos = h.filter(x=>x.nivel==='rojo').length;
+  const amarillos = h.filter(x=>x.nivel==='amarillo').length;
+  const resumen = document.getElementById('revResumen');
+  if(!rojos && !amarillos) resumen.textContent = 'Revisado el '+formatearFecha(fechaHoyISO())+': no he encontrado nada raro. 🎉';
+  else resumen.textContent = 'Revisado el '+formatearFecha(fechaHoyISO())+': '+(rojos? rojos+' cosa(s) que conviene mirar ya' : '')+(rojos && amarillos ? ' y ' : '')+(amarillos ? amarillos+' aviso(s)' : '')+'. Toca uno para ir al apartado.';
+  const orden = {rojo:0, amarillo:1, ok:2};
+  const clase = {rojo:'critico', amarillo:'atencion', ok:'bien'};
+  const icono = {rojo:'🔴', amarillo:'🟡', ok:'🟢'};
+  document.getElementById('revLista').innerHTML = h.sort((a,b)=>orden[a.nivel]-orden[b.nivel]).map(x=>
+    `<div class="aviso ${clase[x.nivel]}" ${x.tab ? `style="cursor:pointer;" onclick="cerrarOverlay('overlayRevision'); cambiarTab('${x.tab}');"` : ''}>${icono[x.nivel]} ${x.texto}</div>`
+  ).join('');
+  abrirOverlay('overlayRevision');
 }
 function usuarioActual(){
   return localStorage.getItem('anahy-identidad') || '';
