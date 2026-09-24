@@ -23,6 +23,11 @@ npx wrangler secret put VAPID_PRIVATE_KEY   # pegar la clave privada cuando la p
 La clave privada es la misma que se usó para las suscripciones actuales; si se
 cambiara, todos los móviles tendrían que volver a activar los avisos.
 
+## Dónde está desplegado
+
+URL del Worker: `https://anahy-avisos.arce-jerry54.workers.dev/` (cuenta de Cloudflare de Jerry,
+worker `anahy-avisos`, cron `* * * * *`). Desplegado el 24/09/2026 por la API de Cloudflare.
+
 ## Comprobar que está vivo
 
 Abrir la URL del Worker (la que imprime `wrangler deploy`): responde un JSON con la
