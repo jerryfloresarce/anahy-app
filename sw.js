@@ -1,4 +1,4 @@
-const CACHE_NAME = 'anahy-v3';
+const CACHE_NAME = 'anahy-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -26,6 +26,29 @@ self.addEventListener('activate', (event) => {
     )
   );
   self.clients.claim();
+});
+
+// Avisos push (los envia scripts/avisos-jornada.js desde GitHub Actions). Llegan aunque la app este cerrada.
+self.addEventListener('push', (event) => {
+  let datos = {};
+  try { datos = event.data ? event.data.json() : {}; } catch (e) { datos = { cuerpo: event.data ? event.data.text() : '' }; }
+  event.waitUntil(self.registration.showNotification(datos.titulo || 'Anahy', {
+    body: datos.cuerpo || '',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    tag: 'anahy-jornada-' + (datos.tipo || 'aviso'),
+    data: { url: datos.url || './' }
+  }));
+});
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || './', self.location.href).href;
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ventanas) => {
+    for (const v of ventanas) {
+      if ('focus' in v) { if (v.navigate) v.navigate(url); return v.focus(); }
+    }
+    return clients.openWindow(url);
+  }));
 });
 
 self.addEventListener('fetch', (event) => {

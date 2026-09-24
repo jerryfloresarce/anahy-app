@@ -477,7 +477,7 @@
         Precio por hora (€)
         <input type="number" step="0.01" id="jorTarifa" placeholder="0.00" onchange="guardarTarifaJornada(this.value)" style="width:90px; padding:7px; border:1px solid var(--borde); border-radius:8px; font-family:'Segoe UI',sans-serif; background:var(--crema); color:var(--tinta);">
       </label>
-      <p style="font-size:0.72rem; color:var(--tinta-suave); margin-top:10px;">Los avisos se activan en Ajustes ⚙️ y solo pueden sonar mientras la app está abierta. Para no olvidarlo con la app cerrada, lo más seguro son dos alarmas del móvil: a las 9:00 y a la hora de cierre.</p>
+      <p style="font-size:0.72rem; color:var(--tinta-suave); margin-top:10px;">Los avisos para fichar se activan en Ajustes ⚙️ y llegan al móvil aunque la app esté cerrada: a las 9:00 si no se ha iniciado la jornada, y a la hora de cierre si sigue abierta.</p>
     </div>
     <div class="card">
       <h2>Calendario <span class="badge">toca un día para ver o cambiar sus horas</span></h2>
@@ -626,6 +626,8 @@
         <input type="checkbox" id="ajAvisosJornada" style="width:auto;" onchange="toggleAvisosJornada(this.checked)"> 🔔 Avisar en este móvil para iniciar y finalizar la jornada
       </label>
       <p style="font-size:0.74rem; color:var(--tinta-suave); margin-top:6px;" id="ajAvisosTexto">Solo suenan mientras la app está abierta.</p>
+      <button class="btn secundario" style="margin-top:8px;" id="ajBtnPruebaAviso" onclick="enviarPruebaAviso()">📲 Enviar un aviso de prueba a este móvil</button>
+      <p style="font-size:0.72rem; color:var(--tinta-suave); margin-top:6px;" id="ajPruebaTexto"></p>
     </div>
 
     <h3 style="font-size:0.95rem; margin-top:20px;">Apartados visibles</h3>
@@ -1098,6 +1100,8 @@ const firebaseConfig = {
   measurementId: "G-NXY4WG2E9Q"
 };
 // =====================================================================
+// Clave publica para los avisos push (la privada esta como secreto en GitHub, nunca aqui)
+const VAPID_PUBLIC_KEY = 'BLwaEFvMNJ5iPA07eH11aVgU8hg4TothAJWsLVRFr8LodsK_VCgbEWUuM2Bsu6qCG5bMd4MAJi1Zw9jD8gCk9bQ';
 
 let db = null;
 let docRef = null;
@@ -1392,8 +1396,6 @@ function iniciarApp(){
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
-  // avisos de jornada mientras la app este abierta (cada minuto y al volver a ella)
-  setInterval(comprobarAvisosJornada, 60000);
 
   document.addEventListener('visibilitychange', () => {
     if(document.visibilityState === 'visible' && db){
@@ -1405,7 +1407,6 @@ function iniciarApp(){
           for(const k in def){ if(!(k in state)) state[k] = def[k]; }
           setSync(true);
           render();
-          comprobarAvisosJornada();
         }
       }).catch((e)=>{ console.error('No se pudo refrescar al volver', e); });
     }
@@ -1571,6 +1572,7 @@ function totalIngresosRango(fechaInicioISO, fechaFinISO){
     .reduce((s,x)=>s+Number(x.monto),0);
 }
 
+let tabInicialAplicada = false;
 function render(){
   if(!state) return;
   const cargando = document.getElementById('cargandoAviso');
@@ -1581,6 +1583,12 @@ function render(){
   const [y,m] = selectedMonth.split('-').map(Number);
   document.getElementById('mesLabel').textContent = MESES[m-1] + ' ' + y;
 
+  // si se abre desde un aviso (./?tab=jornada), ir directo a esa pestaña la primera vez
+  if(!tabInicialAplicada){
+    tabInicialAplicada = true;
+    const t = new URLSearchParams(location.search).get('tab');
+    if(t && document.getElementById('tab-'+t) && !tabOculta(t)){ activeTab = t; actualizarFabAgregar(); }
+  }
   aplicarApartados();
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id==='tab-'+activeTab));
   document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.toggle('active', b.dataset.tab===activeTab));
@@ -2198,15 +2206,19 @@ function borrarItemChecklist(i){
 function abrirAjustes(){
   document.getElementById('ajIdentidadActual').textContent = usuarioActual() || 'Sin identificar';
   renderListaApartados();
-  // avisos de jornada: solo tienen sentido para quien ve la pestaña Horas
-  document.getElementById('ajBloqueAvisos').style.display = puedeVerJornada() ? '' : 'none';
+  // avisos de jornada: solo para Gaby, que es quien ficha
+  document.getElementById('ajBloqueAvisos').style.display = usuarioActual()==='Gaby' ? '' : 'none';
   const chk = document.getElementById('ajAvisosJornada');
-  const soporta = 'Notification' in window;
+  const soporta = soportaPush();
   chk.checked = avisosJornadaActivos();
   chk.disabled = !soporta;
+  document.getElementById('ajBtnPruebaAviso').style.display = avisosJornadaActivos() ? '' : 'none';
+  document.getElementById('ajPruebaTexto').textContent = '';
   document.getElementById('ajAvisosTexto').textContent = !soporta
-    ? 'Este móvil no permite avisos desde la app (en iPhone hace falta tenerla instalada en la pantalla de inicio). Usa dos alarmas del móvil.'
-    : (soporta && Notification.permission==='denied' ? 'El móvil tiene los avisos de esta app bloqueados: hay que permitirlos en los ajustes del navegador.' : 'Solo suenan mientras la app está abierta. Para la app cerrada, dos alarmas del móvil: 9:00 y hora de cierre.');
+    ? 'Este móvil no permite avisos desde aquí. En iPhone hay que instalar la app en la pantalla de inicio (Compartir → Añadir a pantalla de inicio) y activarlo desde la app instalada.'
+    : (Notification.permission==='denied'
+        ? 'El móvil tiene los avisos de esta app bloqueados: hay que permitirlos en los ajustes del móvil.'
+        : 'Llegan aunque la app esté cerrada: a las 9:00 si no se ha iniciado la jornada, y a la hora de cierre (22:00, sábados 23:00) si sigue abierta.');
   abrirOverlay('overlayAjustes');
 }
 
@@ -3092,24 +3104,56 @@ function recordatoriosJornada(){
   }
   return r;
 }
-// el interruptor es de cada movil (localStorage); el permiso del navegador solo se puede pedir, no quitar
-function avisosJornadaActivos(){ return localStorage.getItem('anahy-avisos-jornada')==='1' && 'Notification' in window && Notification.permission==='granted'; }
-function toggleAvisosJornada(activar){
-  if(!activar){ localStorage.setItem('anahy-avisos-jornada','0'); return; }
-  if(!('Notification' in window)){ alert('Este móvil no permite avisos desde la app. Usa dos alarmas del móvil (9:00 y hora de cierre).'); document.getElementById('ajAvisosJornada').checked = false; return; }
-  Notification.requestPermission().then(p=>{
-    if(p==='granted'){ localStorage.setItem('anahy-avisos-jornada','1'); comprobarAvisosJornada(); }
-    else { alert('No se ha dado permiso para los avisos.'); document.getElementById('ajAvisosJornada').checked = false; }
-  });
+// Avisos push: el movil se suscribe y guarda su suscripcion en la nube (coleccion anahyPush);
+// GitHub Actions la usa a las 9:00 y a la hora de cierre para mandar el aviso aunque la app este cerrada.
+function soportaPush(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function avisosJornadaActivos(){ return !!localStorage.getItem('anahy-push-id'); }
+function claveVapid(){
+  const b64 = (VAPID_PUBLIC_KEY + '='.repeat((4 - VAPID_PUBLIC_KEY.length % 4) % 4)).replace(/-/g,'+').replace(/_/g,'/');
+  const raw = atob(b64);
+  return Uint8Array.from(Array.from(raw).map(c=>c.charCodeAt(0)));
 }
-function comprobarAvisosJornada(){
-  if(!state || !puedeVerJornada() || !avisosJornadaActivos()) return;
-  const hoy = fechaHoyISO();
-  recordatoriosJornada().forEach(r=>{
-    const clave = 'anahy-jornada-aviso-'+r.tipo+'-'+hoy;
-    if(localStorage.getItem(clave)) return; // un aviso de cada tipo por dia
-    try{ new Notification('Anahy · Jornada', { body: r.texto.replace('⏱️ ','') }); localStorage.setItem(clave, '1'); } catch(e){}
-  });
+async function toggleAvisosJornada(activar){
+  const chk = document.getElementById('ajAvisosJornada');
+  if(!activar){
+    const id = localStorage.getItem('anahy-push-id');
+    try{ const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if(sub) await sub.unsubscribe(); }catch(e){}
+    if(id){ try{ await db.collection('anahyPush').doc(id).delete(); }catch(e){ console.error(e); } localStorage.removeItem('anahy-push-id'); }
+    return;
+  }
+  if(!soportaPush()){
+    alert('Este móvil no permite avisos desde aquí. En iPhone: instala la app en la pantalla de inicio (Compartir → Añadir a pantalla de inicio) y actívalo desde la app instalada.');
+    chk.checked = false; return;
+  }
+  try{
+    const permiso = await Notification.requestPermission();
+    if(permiso!=='granted'){ alert('No se ha dado permiso para los avisos.'); chk.checked = false; return; }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: claveVapid() });
+    const id = localStorage.getItem('anahy-push-id') || cid();
+    await db.collection('anahyPush').doc(id).set({ sub: JSON.stringify(sub), usuario: usuarioActual(), creado: new Date().toISOString() });
+    localStorage.setItem('anahy-push-id', id);
+    document.getElementById('ajBtnPruebaAviso').style.display = '';
+    alert('Avisos activados. Llegarán a las 9:00 si no se ha iniciado la jornada y a la hora de cierre si sigue abierta, aunque la app esté cerrada. Puedes probarlo con el botón de aviso de prueba.');
+  }catch(e){
+    console.error(e);
+    alert('No se pudieron activar los avisos: '+(e.message||e));
+    chk.checked = false;
+  }
+}
+// pide un aviso de prueba: lo recoge GitHub en su siguiente pasada (cada 10 minutos) y lo manda a este movil
+async function enviarPruebaAviso(){
+  const id = localStorage.getItem('anahy-push-id');
+  if(!id){ alert('Primero activa los avisos.'); return; }
+  const texto = document.getElementById('ajPruebaTexto');
+  try{
+    await db.collection('anahyPush').doc('_prueba_'+id).set({ pushId: id, usuario: usuarioActual(), pedido: new Date().toISOString() });
+    texto.textContent = 'Pedido a las '+horaAhora()+'. Bloquea el móvil: el aviso de prueba llegará en menos de 10 minutos.';
+  }catch(e){
+    console.error(e);
+    texto.textContent = 'No se pudo pedir la prueba: '+(e.message||e);
+  }
 }
 function renderJornada(){
   const j = jornadaState();
