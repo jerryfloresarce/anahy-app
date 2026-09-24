@@ -5,6 +5,9 @@ Manda al móvil de Gaby, aunque la app esté cerrada, el aviso de iniciar la jor
 abierta), y los avisos de prueba que se piden desde Ajustes de la app.
 
 - `index.mjs`: el Worker entero (cron cada minuto, lectura de Firestore, cifrado
+  Web Push y firma VAPID con WebCrypto, sin dependencias). Avisos: lunes a viernes a las
+  9:00 si no ha iniciado (salvo día libre/fiesta marcado en la app), 13:00 si las horas de
+  la mañana siguen abiertas, y 22:00 (sábados 23:00) si sigue abierta.
   Web Push y firma VAPID con WebCrypto, sin dependencias).
 - `wrangler.jsonc`: el cron y la clave pública VAPID.
 

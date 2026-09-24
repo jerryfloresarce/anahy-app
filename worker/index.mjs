@@ -2,8 +2,9 @@
 //
 // Cada minuto mira la hora de Madrid y, si toca, manda un aviso push al movil de Gaby
 // aunque la app este cerrada:
-//   - entre las 9:00 y las 9:59, una vez al dia: si no se ha iniciado la jornada
-//     (o quedo una de otro dia sin cerrar)
+//   - de lunes a viernes entre las 9:00 y las 9:59, una vez al dia: si no se ha iniciado la
+//     jornada (o quedo una de otro dia sin cerrar); nunca en un dia marcado como libre/fiesta
+//   - a las 13:00, una vez al dia: si las horas de la mañana siguen abiertas (se le olvido cerrar)
 //   - en la hora de cierre (22:00, sabados 23:00), una vez al dia: si sigue abierta
 //   - y los avisos de prueba pedidos desde Ajustes de la app (documentos _prueba_* )
 //
@@ -113,7 +114,7 @@ function guardarMeta(meta) {
 function ahoraEnMadrid() {
   const f = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour12: false });
   const p = Object.fromEntries(f.formatToParts(new Date()).filter(x => x.type !== 'literal').map(x => [x.type, x.value]));
-  return { hora: Number(p.hour) % 24, minuto: Number(p.minute), fecha: `${p.year}-${p.month}-${p.day}`, sabado: p.weekday === 'Sat' };
+  return { hora: Number(p.hour) % 24, minuto: Number(p.minute), fecha: `${p.year}-${p.month}-${p.day}`, sabado: p.weekday === 'Sat', laborable: !['Sat', 'Sun'].includes(p.weekday) };
 }
 const fmt = iso => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
 
@@ -133,7 +134,7 @@ async function enviarATodos(subs, tipo, titulo, cuerpo, env, log) {
 
 // ---------- la pasada de cada minuto ----------
 export async function pasada(env, forzar = '', log = console.log) {
-  const { hora, minuto, fecha, sabado } = ahoraEnMadrid();
+  const { hora, minuto, fecha, sabado, laborable } = ahoraEnMadrid();
   const cierre = sabado ? 23 : 22;
 
   const lista = await getJSON(`${BASE}/anahyPush?key=${API_KEY}&pageSize=200`);
@@ -142,7 +143,7 @@ export async function pasada(env, forzar = '', log = console.log) {
   let meta = {};
   for (const d of docs) {
     const id = d.name.split('/').pop();
-    if (id === '_meta') { meta = { iniciar: str(d, 'iniciar'), finalizar: str(d, 'finalizar') }; continue; }
+    if (id === '_meta') { meta = { iniciar: str(d, 'iniciar'), mediodia: str(d, 'mediodia'), finalizar: str(d, 'finalizar') }; continue; }
     if (id.startsWith('_prueba_')) { pruebas.push({ id, pushId: str(d, 'pushId') }); continue; }
     if (str(d, 'usuario') !== SOLO_PARA) continue;
     try { subs.push({ id, sub: JSON.parse(str(d, 'sub')) }); } catch (e) { /* suscripcion rota */ }
@@ -158,21 +159,29 @@ export async function pasada(env, forzar = '', log = console.log) {
   if (forzar === 'prueba') await enviarATodos(subs, 'prueba', 'Anahy · Prueba', 'Los avisos de jornada funcionan en este móvil. 🎉', env, log);
 
   // 2) avisos del dia, una sola vez cada uno
-  const tocaIniciar = forzar === 'iniciar' || (!forzar && hora === 9 && meta.iniciar !== fecha);
+  const tocaIniciar = forzar === 'iniciar' || (!forzar && laborable && hora === 9 && meta.iniciar !== fecha);
+  const tocaMediodia = forzar === 'mediodia' || (!forzar && hora === 13 && meta.mediodia !== fecha);
   const tocaFinalizar = forzar === 'finalizar' || (!forzar && hora === cierre && meta.finalizar !== fecha);
-  if (!tocaIniciar && !tocaFinalizar) {
+  if (!tocaIniciar && !tocaMediodia && !tocaFinalizar) {
     return `Madrid ${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')} · móviles ${subs.length} · pruebas ${pruebas.length} · nada más que avisar`;
   }
   const estado = JSON.parse((await getJSON(`${BASE}/anahy/estado?key=${API_KEY}`)).fields.json.stringValue);
   const tramos = (estado.jornada && estado.jornada.tramos) || [];
   const deHoy = tramos.filter(t => t.fecha === fecha);
   const abierto = tramos.find(t => !t.fin);
+  const libre = ((estado.jornada && estado.jornada.libres) || {})[fecha]; // dia libre / fiesta marcado en la app
 
   if (tocaIniciar) {
     if (abierto && abierto.fecha !== fecha) await enviarATodos(subs, 'sincerrar', 'Anahy · Jornada sin cerrar', `La jornada del ${fmt(abierto.fecha)} se quedó sin cerrar. Ponle la hora de salida.`, env, log);
+    else if (libre) log(`hoy es "${libre}": no se avisa de iniciar`);
     else if (!deHoy.length) await enviarATodos(subs, 'iniciar', 'Anahy · Buenos días', 'Recuerda darle a Iniciar jornada cuando empieces.', env, log);
     else log('a las 9 ya había jornada iniciada: no hace falta avisar');
     if (!forzar) { meta.iniciar = fecha; await guardarMeta(meta); }
+  }
+  if (tocaMediodia) {
+    if (abierto && abierto.fecha === fecha) await enviarATodos(subs, 'mediodia', 'Anahy · Horas sin cerrar', 'Son las 13:00 y las horas de la mañana siguen abiertas. Dale a Finalizar jornada (y corrige la hora de salida si hace falta).', env, log);
+    else log('a las 13:00 no había jornada abierta: no hace falta avisar');
+    if (!forzar) { meta.mediodia = fecha; await guardarMeta(meta); }
   }
   if (tocaFinalizar) {
     if (abierto && abierto.fecha === fecha) await enviarATodos(subs, 'finalizar', 'Anahy · Hora de cerrar', 'Si has terminado, dale a Finalizar jornada.', env, log);
