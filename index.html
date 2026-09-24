@@ -1100,7 +1100,7 @@ const firebaseConfig = {
   measurementId: "G-NXY4WG2E9Q"
 };
 // =====================================================================
-// Clave publica para los avisos push (la privada esta como secreto en GitHub, nunca aqui)
+// Clave publica para los avisos push (la privada esta como secreto del Worker de Cloudflare, nunca aqui)
 const VAPID_PUBLIC_KEY = 'BLwaEFvMNJ5iPA07eH11aVgU8hg4TothAJWsLVRFr8LodsK_VCgbEWUuM2Bsu6qCG5bMd4MAJi1Zw9jD8gCk9bQ';
 
 let db = null;
@@ -3105,7 +3105,7 @@ function recordatoriosJornada(){
   return r;
 }
 // Avisos push: el movil se suscribe y guarda su suscripcion en la nube (coleccion anahyPush);
-// GitHub Actions la usa a las 9:00 y a la hora de cierre para mandar el aviso aunque la app este cerrada.
+// el Worker de Cloudflare (worker/index.mjs) la usa cada minuto para mandar el aviso aunque la app este cerrada.
 function soportaPush(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
 function avisosJornadaActivos(){ return !!localStorage.getItem('anahy-push-id'); }
 function claveVapid(){
