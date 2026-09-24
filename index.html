@@ -3142,14 +3142,14 @@ async function toggleAvisosJornada(activar){
     chk.checked = false;
   }
 }
-// pide un aviso de prueba: lo recoge GitHub en su siguiente pasada (cada 10 minutos) y lo manda a este movil
+// pide un aviso de prueba: lo recoge el servidor de avisos en su siguiente pasada (cada minuto) y lo manda a este movil
 async function enviarPruebaAviso(){
   const id = localStorage.getItem('anahy-push-id');
   if(!id){ alert('Primero activa los avisos.'); return; }
   const texto = document.getElementById('ajPruebaTexto');
   try{
     await db.collection('anahyPush').doc('_prueba_'+id).set({ pushId: id, usuario: usuarioActual(), pedido: new Date().toISOString() });
-    texto.textContent = 'Pedido a las '+horaAhora()+'. Bloquea el móvil: el aviso de prueba llegará en menos de 10 minutos.';
+    texto.textContent = 'Pedido a las '+horaAhora()+'. Bloquea el móvil: el aviso de prueba llegará en menos de un minuto.';
   }catch(e){
     console.error(e);
     texto.textContent = 'No se pudo pedir la prueba: '+(e.message||e);

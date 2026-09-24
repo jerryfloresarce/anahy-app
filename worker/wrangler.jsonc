@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "anahy-avisos",
+  "main": "index.mjs",
+  "compatibility_date": "2025-09-01",
+  "triggers": { "crons": ["* * * * *"] },
+  "vars": {
+    "VAPID_PUBLIC_KEY": "BLwaEFvMNJ5iPA07eH11aVgU8hg4TothAJWsLVRFr8LodsK_VCgbEWUuM2Bsu6qCG5bMd4MAJi1Zw9jD8gCk9bQ"
+  }
+  // La clave privada NO va aqui: se guarda como secreto del Worker:
+  //   npx wrangler secret put VAPID_PRIVATE_KEY
+}
